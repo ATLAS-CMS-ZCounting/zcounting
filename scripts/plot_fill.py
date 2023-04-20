@@ -8,7 +8,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.ticker as ticker
 
 sys.path.append(os.getcwd())
-from common import parsing, logging, utils
+from common import parsing, logging, utils, plotting
 
 parser = parsing.parser()
 parser.add_argument("-f", "--fills", default=[], type=int, nargs="*",
@@ -19,6 +19,13 @@ parser.add_argument("--fmts", default=["png", ], type=int, nargs="+",
                     help="List of formats to store the plots")                    
 args = parser.parse_args()
 log = logging.setup_logger(__file__, args.verbose)
+
+colors, textsize, labelsize, markersize = plotting.set_matplotlib_style()
+
+color_cms = colors[0]
+color_atlas = colors[1]
+marker_cms = "^"
+marker_atlas = "v"
 
 
 with open(args.atlas_csv, "r") as ifile:
@@ -36,15 +43,15 @@ else:
 if not os.path.isdir(args.outputDir):
     os.mkdir(args.outputDir)
 
-def convert_time(df):
+def convert_time(df, atlas=False):
     # convert time
-    df['timeDown'] = df['beginTime'].apply(lambda x: utils.to_mpl_time(x))
-    df['timeUp'] = df['endTime'].apply(lambda x: utils.to_mpl_time(x))
+    df['timeDown'] = df['beginTime'].apply(lambda x: utils.to_mpl_time(x, atlas))
+    df['timeUp'] = df['endTime'].apply(lambda x: utils.to_mpl_time(x, atlas))
 
     # center of each time slice
     df['time'] = df['timeDown'] + (df['timeUp'] - df['timeDown'])/2
 
-convert_time(df_atlas) 
+convert_time(df_atlas, atlas=True) 
 convert_time(df_cms) 
 
 for fill in fills:
@@ -113,42 +120,47 @@ for fill in fills:
     else:
         ax1 = fig.add_subplot(111)
         
-    fig.subplots_adjust(hspace=0.0, left=0.15, right=0.95, top=0.95, bottom=0.125)
+    fig.subplots_adjust(hspace=0.0, left=0.15, right=0.95, top=0.92, bottom=0.125)
         
-    ax1.set_xlabel("LHC runtime")
+    ax1.set_title(f"Fill {fill}")
     ax1.set_ylabel("Z boson rate [Hz]")
     
-    ax1.errorbar(x_cms, y_cms, xerr=(xDown_cms, xUp_cms), yerr=yErr_cms, label="CMS", color="red", 
+    ax1.errorbar(x_cms, y_cms, xerr=(xDown_cms, xUp_cms), yerr=yErr_cms, label="CMS", color=color_cms, marker=marker_cms,
         linestyle='', zorder=0)
 
-    ax1.errorbar(x_atlas, y_atlas, xerr=(xDown_atlas, xUp_atlas), yerr=yErr_atlas, label="ATLAS", color="blue", 
+    ax1.errorbar(x_atlas, y_atlas, xerr=(xDown_atlas, xUp_atlas), yerr=yErr_atlas, label="ATLAS", color=color_atlas, marker=marker_atlas,
         linestyle='', zorder=0)
 
-    leg = ax1.legend(loc="lower left", ncol=2, frameon=True, framealpha=1.0, fancybox=False, edgecolor="black")
-    leg.get_frame().set_linewidth(0.8)
+    leg = ax1.legend(loc="lower left")
 
     yMin = min(min(y_cms-yErr_cms),min(y_atlas-yErr_atlas))
     yMax = max(max(y_cms+yErr_cms),max(y_atlas+yErr_atlas))
 
     yRange = yMax - yMin 
-    ax1.set_ylim([yMin - yRange*0.45, yMax + yRange*0.15])
+    ax1.set_ylim([yMin - yRange*0.15, yMax + yRange*0.15])
     ax1.set_xlim([xMin, xMax])
     ax1.set_xticks(xTicks)
     
     if not args.no_ratio:
         ax1.xaxis.set_major_locator(ticker.NullLocator())
-    
+        ax2.set_xlabel("LHC runtime")
+        ax2.set_ylabel("ATLAS / CMS")
+
         #TODO
             
-        ax2.plot(np.array([xMin, xMax]), np.array([1.0, 1.0]), color="black",linestyle="-", linewidth=1)
+        ax2.plot(np.array([xMin, xMax]), np.array([1.0, 1.0]), color="black",linestyle="--", linewidth=1)
         
         ax2.set_ylim([0.961,1.039])
         ax2.set_xlim([xMin, xMax])
         ax2.set_xticks(xTicks)
 
-    # align y labels
-    ax1.yaxis.set_label_coords(-0.12, 0.5)
-    ax2.yaxis.set_label_coords(-0.12, 0.5)
+        # align y labels
+        ax1.yaxis.set_label_coords(-0.12, 0.5)
+        ax2.yaxis.set_label_coords(-0.12, 0.5)
+    else:
+        ax1.set_xlabel("LHC runtime")
+
+
 
     for fmt in args.fmts:
         plt.savefig(args.outputDir+f"/fill_{fill}.{fmt}")
@@ -174,42 +186,56 @@ for fill in fills:
     else:
         ax1 = fig.add_subplot(111)
         
-    fig.subplots_adjust(hspace=0.0, left=0.15, right=0.95, top=0.95, bottom=0.125)
+    fig.subplots_adjust(hspace=0.0, left=0.15, right=0.95, top=0.92, bottom=0.125)
         
-    ax1.set_xlabel("LHC runtime")
+    ax1.set_title(f"Fill {fill}")
     ax1.set_ylabel("Number of Z bosons")
     
-    ax1.errorbar(x_cms, y_cms, xerr=(xDown_cms, xUp_cms), yerr=yErr_cms, label="CMS", color="red", 
+    ax1.errorbar(x_cms, y_cms, xerr=(xDown_cms, xUp_cms), yerr=yErr_cms, label="CMS", color=color_cms, marker=marker_cms,
         linestyle='', zorder=0)
 
-    ax1.errorbar(x_atlas, y_atlas, xerr=(xDown_atlas, xUp_atlas), yerr=yErr_atlas, label="ATLAS", color="blue", 
+    ax1.errorbar(x_atlas, y_atlas, xerr=(xDown_atlas, xUp_atlas), yerr=yErr_atlas, label="ATLAS", color=color_atlas, marker=marker_atlas,
         linestyle='', zorder=0)
 
-    leg = ax1.legend(loc="lower left", ncol=2, frameon=True, framealpha=1.0, fancybox=False, edgecolor="black")
-    leg.get_frame().set_linewidth(0.8)
+    leg = ax1.legend(loc="lower right")
 
     yMin = min(min(y_cms-yErr_cms),min(y_atlas-yErr_atlas))
     yMax = max(max(y_cms+yErr_cms),max(y_atlas+yErr_atlas))
 
     yRange = yMax - yMin 
-    ax1.set_ylim([yMin - yRange*0.45, yMax + yRange*0.15])
+    ax1.set_ylim([yMin - yRange*0.15, yMax + yRange*0.15])
     ax1.set_xlim([xMin, xMax])
     ax1.set_xticks(xTicks)
+    ax1.ticklabel_format(axis='y', style='sci', scilimits=(5,5))
     
     if not args.no_ratio:
         ax1.xaxis.set_major_locator(ticker.NullLocator())
-    
-        #TODO
-            
-        ax2.plot(np.array([xMin, xMax]), np.array([1.0, 1.0]), color="black",linestyle="-", linewidth=1)
+        ax2.set_xlabel("LHC runtime")
+        ax2.set_ylabel("ATLAS / CMS")
+
+        # cumulative ratio
+        xx = np.linspace(xMin, xMax, 100)
+        yy_atlas = np.array([y_atlas[x_atlas < x][-1] if any(x_atlas < x) else 1 for x in xx])
+        yy_cms = np.array([y_cms[x_cms < x][-1] if any(x_cms < x) else 1 for x in xx])
+
+        ax2.plot(xx, yy_atlas/yy_cms, color="black", marker=None,
+            linestyle='-', zorder=0)
+
+        ratio = round(y_atlas[-1] / y_cms[-1],3)
+
+        ax2.plot(np.array([xMin, xMax]), np.array([1.0, 1.0]), color="black", linestyle="--", linewidth=1)
         
-        ax2.set_ylim([0.961,1.039])
+        ax2.text(0.5, 0.7 if ratio<1 else 0.2, "Integrated Z ratio: "+str(ratio), verticalalignment='bottom', transform=ax2.transAxes)
+
+        ax2.set_ylim([0.8,1.2])
         ax2.set_xlim([xMin, xMax])
         ax2.set_xticks(xTicks)
-
-    # align y labels
-    ax1.yaxis.set_label_coords(-0.12, 0.5)
-    ax2.yaxis.set_label_coords(-0.12, 0.5)
+    
+        # align y labels
+        ax1.yaxis.set_label_coords(-0.12, 0.5)
+        ax2.yaxis.set_label_coords(-0.12, 0.5)
+    else:
+        ax1.set_xlabel("LHC runtime")
 
     for fmt in args.fmts:
         plt.savefig(args.outputDir+f"/fill_cumulative_{fill}.{fmt}")
