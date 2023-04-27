@@ -52,10 +52,10 @@ else:
 if not os.path.isdir(args.outputDir):
     os.mkdir(args.outputDir)
 
-def convert_time(df, atlas=False):
+def convert_time(df):
     # convert time
-    df['timeDown'] = df['beginTime'].apply(lambda x: utils.to_datetime(x, atlas))
-    df['timeUp'] = df['endTime'].apply(lambda x: utils.to_datetime(x, atlas))
+    df['timeDown'] = df['beginTime'].apply(lambda x: utils.to_datetime(x))
+    df['timeUp'] = df['endTime'].apply(lambda x: utils.to_datetime(x))
 
     # center of each time slice
     df['timewindow'] = df['timeUp'] - df['timeDown']
@@ -63,15 +63,15 @@ def convert_time(df, atlas=False):
 
     df['timewindow'] = df['timewindow'].apply(lambda x: x.total_seconds())
 
-    df["time"] = df["time"].apply(lambda x: utils.to_mpl_time(x, atlas))
-    df["timeUp"] = df["timeUp"].apply(lambda x: utils.to_mpl_time(x, atlas))
-    df["timeDown"] = df["timeDown"].apply(lambda x: utils.to_mpl_time(x, atlas))
+    df["time"] = df["time"].apply(lambda x: utils.to_mpl_time(x))
+    df["timeUp"] = df["timeUp"].apply(lambda x: utils.to_mpl_time(x))
+    df["timeDown"] = df["timeDown"].apply(lambda x: utils.to_mpl_time(x))
 
     df["timeUp"] = df["timeUp"] - df["time"]
     df["timeDown"] = df["time"] - df["timeDown"]
 
 
-convert_time(df_atlas, atlas=True) 
+convert_time(df_atlas) 
 convert_time(df_cms) 
 
 for fill in fills:

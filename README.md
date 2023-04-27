@@ -21,6 +21,7 @@ The LPC wants the following format:
   ...
 } 
 ```
+It also produces a plot with the Z boson rate and luminosity ratios between ATLAS and CMS and the double ratio. 
 
 ## common
 This folder contains helper functions used in other places of the framework
@@ -30,14 +31,14 @@ This folder contains helper functions used in other places of the framework
 ## Agreed conventions
 
 ### phase space
-We agreed to measure $\mathrm{Z}/\gamma^{\star}->\mu\mu$ events where intermediate $\tau$ leptons are excluded. 
+We measure $\mathrm{Z}/\gamma^{\star}->\mu\mu$ events where intermediate $\tau$ leptons are excluded. 
 The fiducial phase space, defined for bare muons, is:
 - Both muons must have $p_{\mathrm{T}} > 27$ GeV
 - Both muons must have $|\eta| < 2.4$ GeV
 - The invariant mass of the dimuon system must be within $66 < m_{\mu\mu} < 116$ GeV.
 
 ### csv files
-ATLAS and CMS agreed to share information with several measurements of the Z boson rate (about every 20 minutes) in a .csv file in the following columns:
+ATLAS and CMS share information with several measurements of the Z boson rate (about every 20 minutes) in a .csv file with the following columns:
 ```
 fill,beginTime,endTime,ZRate,instDelLumi,delLumi,delZCount
 ```
