@@ -2,10 +2,13 @@ import pandas as pd
 import numpy as np
 import json
 import os,sys
-import pdb
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib.ticker as ticker
+import matplotlib.dates as md
+
+import pdb
 
 sys.path.append(os.getcwd())
 from common import parsing, logging, utils, plotting
@@ -17,8 +20,8 @@ parser.add_argument("--no-ratio", action="store_true",
                     help="Make no ratio")
 parser.add_argument("--fmts", default=["png", ], type=int, nargs="+",
                     help="List of formats to store the plots")
-parser.add_argument("--no-ref", default=["png", ], action="store_true",
-                    help="Don't show reference lumi")                    
+parser.add_argument("--ref-lumi", default=False, action="store_true",
+                    help="Show reference lumi")                    
 args = parser.parse_args()
 log = logging.setup_logger(__file__, args.verbose)
 
@@ -29,6 +32,10 @@ color_atlas = colors[1]
 marker_cms = "o"
 marker_atlas = "o"
 
+label_ratio = r"$\frac{\mathrm{ATLAS}}{\mathrm{CMS}}$"
+label_ratio_ref = r"$\frac{N_\mathrm{Z}}{\mathcal{L}}$"
+
+xsec = 650
 
 with open(args.atlas_csv, "r") as ifile:
     df_atlas = pd.read_csv(ifile)
@@ -54,13 +61,18 @@ def convert_time(df, atlas=False):
     df['timewindow'] = df['timeUp'] - df['timeDown']
     df['time'] = df['timeDown'] + df['timewindow']/2
 
+    df['timewindow'] = df['timewindow'].apply(lambda x: x.total_seconds())
+
     df["time"] = df["time"].apply(lambda x: utils.to_mpl_time(x, atlas))
     df["timeUp"] = df["timeUp"].apply(lambda x: utils.to_mpl_time(x, atlas))
     df["timeDown"] = df["timeDown"].apply(lambda x: utils.to_mpl_time(x, atlas))
 
+    df["timeUp"] = df["timeUp"] - df["time"]
+    df["timeDown"] = df["time"] - df["timeDown"]
+
+
 convert_time(df_atlas, atlas=True) 
 convert_time(df_cms) 
-
 
 for fill in fills:
     if fill not in df_cms["fill"].values:
@@ -73,8 +85,31 @@ for fill in fills:
     dfill_cms = df_cms.loc[df_cms["fill"] == fill]
     dfill_atlas = df_atlas.loc[df_atlas["fill"] == fill]
 
-    if len(dfill_cms) == 1 and len(dfill_atlas):
-        log.info(f"Only one measurement in fill {fill}, next fill!")
+    # compute ratio of full fill
+    def sum_rate(df):
+        return sum(df['timewindow']*df["ZRate"])
+
+    nz_rate_atlas = sum_rate(dfill_atlas)
+    nz_rate_cms = sum_rate(dfill_cms)
+    nz_rate_ratio = nz_rate_atlas / nz_rate_cms
+
+    log.debug(f"NZ(ATLAS): {nz_rate_atlas}")
+    log.debug(f"NZ(CMS): {nz_rate_cms}")
+    log.debug(f"NZ(ATLAS)/NZ(CMS): {nz_rate_ratio}")
+
+    log.debug(f"-----------")
+
+    nz_atlas = sum(dfill_atlas["delZCount"])
+    nz_cms = sum(dfill_cms["delZCount"])
+    nz_ratio = nz_atlas / nz_cms
+
+    log.debug(f"NZ(ATLAS): {nz_atlas}")
+    log.debug(f"NZ(CMS): {nz_cms}")
+    log.debug(f"NZ(ATLAS)/NZ(CMS): {nz_ratio}")
+
+
+    if len(dfill_cms) <= 1 or len(dfill_atlas) <= 1:
+        log.info(f"Only one measurement in fill {fill} in both experiments, next fill!")
         continue
 
     log.info(f"Plot fill {fill}")
@@ -84,21 +119,12 @@ for fill in fills:
         xUp = df['timeUp'].values
         xDown = df['timeDown'].values
 
-        # convert into hours
-        xUp = (xUp - x) * 24 
-        xDown = (x - xDown) * 24
-        x = x * 24
-        x = (x - x[0] + xDown[0])
-
         return x, xUp, xDown
     
     x_cms, xUp_cms, xDown_cms = get_x(dfill_cms)
     x_atlas, xUp_atlas, xDown_atlas = get_x(dfill_atlas)
 
     # x axis range
-    time_cms = max(x_cms) - min(x_cms)
-    time_atlas = max(x_atlas) - min(x_atlas)
-
     xMin = min(min(x_cms-xDown_cms), min(x_atlas-xDown_atlas))
     xMax = max(max(x_cms+xUp_cms), max(x_atlas+xUp_atlas))
     xRange = xMax - xMin
@@ -106,6 +132,44 @@ for fill in fills:
     xMax = xMax + xRange * 0.015
     xRange = xMax - xMin
 
+    # total timewindow in seconds
+    dateMin = mpl.dates.num2date(xMin)
+    dateMax = mpl.dates.num2date(xMax)
+
+    if dateMax.month != dateMin.month:
+        datestring = "{0}/{1} - {2}/{3}/{4}".format(dateMin.month, dateMin.day, dateMax.month, dateMax.day, dateMin.year)
+    elif dateMax.day != dateMin.day:
+        datestring = "{0}-{1}/{2}/{3}".format(dateMin.day, dateMax.day, dateMin.month, dateMin.year)
+    else:
+        datestring = "{0}/{1}/{2}".format(dateMin.day, dateMin.month, dateMin.year)
+
+    timewindow = (dateMax - dateMin).total_seconds()
+
+    # fine grid for plotting smooth rate
+    nPoints = 10000
+    xGrid = np.linspace(xMin, xMax, nPoints)
+
+    # time delta
+    dt = timewindow/nPoints
+
+    def set_xaxis_format(axis, time=True):
+        axis.set_xlim([xMin, xMax])
+        axis.set_xlabel("LHC runtime [h]")
+        if time:
+            # locator = md.AutoDateLocator(minticks=2, maxticks=24)
+            # formatter = md.ConciseDateFormatter(locator)
+            # axis.xaxis.set_major_locator(locator)
+            # axis.xaxis.set_major_formatter(formatter)
+
+            xfmt = md.DateFormatter('%H:00')
+            axis.xaxis.set_major_formatter(xfmt)
+        else:
+            ticksteps = 1 + xRange // 8 
+            xTicks = np.arange(0, int(xMax), ticksteps)
+            axis.set_xticks(xTicks)
+
+
+    # ---  make plot with ZRate from ATLAS and CMS
     def get_y(df):
         y = df['ZRate'].values
 
@@ -117,17 +181,18 @@ for fill in fills:
     y_cms, yErr_cms = get_y(dfill_cms)
     y_atlas, yErr_atlas = get_y(dfill_atlas)
 
-    y_lumi_cms = dfill_cms["instDelLumi"] * 650.
-    y_lumi_atlas = dfill_atlas["instDelLumi"] * 650.
+    y_lumi_cms = dfill_cms["instDelLumi"].values * xsec
+    y_lumi_atlas = dfill_atlas["instDelLumi"].values * xsec
 
-    ticksteps = 1 + xRange // 8 
-
-    xTicks = np.arange(0, int(xMax), ticksteps)
-    
     # make plot of Z boson rate as function of LHC fill time
     plt.clf()
     fig = plt.figure()
-    if not args.no_ratio:
+    if not args.no_ratio and args.ref_lumi:
+        gs = gridspec.GridSpec(3, 1, height_ratios=[2, 1, 1])
+        ax1 = plt.subplot(gs[0])
+        ax3 = plt.subplot(gs[1])
+        ax2 = plt.subplot(gs[2])
+    elif not args.no_ratio:
         gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
         ax1 = plt.subplot(gs[0])
         ax2 = plt.subplot(gs[1])
@@ -136,29 +201,24 @@ for fill in fills:
         
     fig.subplots_adjust(hspace=0.0, left=0.15, right=0.95, top=0.92, bottom=0.125)
         
-    ax1.set_title(f"Fill {fill}")
     ax1.set_ylabel("Z boson rate [Hz]")
-    
-    # ax1.errorbar(x_cms, y_cms, xerr=(xDown_cms, xUp_cms), yerr=yErr_cms, label="CMS", color=color_cms, marker=marker_cms, mfc='none',
-    #     linestyle='', zorder=0)
 
-    # ax1.errorbar(x_atlas, y_atlas, xerr=(xDown_atlas, xUp_atlas), yerr=yErr_atlas, label="ATLAS", color=color_atlas, marker=marker_atlas,
-    #     linestyle='', zorder=0)
+    ax1.text(0.0, 0.99, f"Fill {fill}", verticalalignment='bottom', transform=ax1.transAxes)    
+    ax1.text(1.0, 0.99, datestring, verticalalignment='bottom', horizontalalignment='right', transform=ax1.transAxes)
 
-    if not args.no_ref:
+    ax1.plot(x_cms, y_cms, label="CMS", color=color_cms, marker=marker_cms, mfc='none',
+        linestyle='', zorder=2)
+
+    ax1.plot(x_atlas, y_atlas, label="ATLAS", color=color_atlas, marker=marker_atlas, mfc='none',
+        linestyle='', zorder=2)
+
+    if args.ref_lumi:
+        # plot reference lumi scaled to Z rate
         ax1.errorbar(x_cms, y_lumi_cms, xerr=(xDown_cms, xUp_cms), label="CMS L", color=color_cms, 
-            linestyle='', zorder=0)
+            linestyle='', zorder=1)
 
         ax1.errorbar(x_atlas, y_lumi_atlas, xerr=(xDown_atlas, xUp_atlas), label="ATLAS L", color=color_atlas, 
-            linestyle='', zorder=0)
-
-
-    ax1.plot(x_cms, y_cms,label="CMS Z", color=color_cms, marker=marker_cms, mfc='none',
-        linestyle='', zorder=0)
-
-    ax1.plot(x_atlas, y_atlas, label="ATLAS Z", color=color_atlas, marker=marker_atlas, mfc='none',
-        linestyle='', zorder=0)
-
+            linestyle='', zorder=1)
 
     leg = ax1.legend(loc="upper right", ncol=2)
 
@@ -167,55 +227,96 @@ for fill in fills:
 
     yRange = yMax - yMin 
     ax1.set_ylim([yMin - yRange*0.15, yMax + yRange*0.15])
-    ax1.set_xlim([xMin, xMax])
-    ax1.set_xticks(xTicks)
-    
+
+    set_xaxis_format(ax1)
+
     if not args.no_ratio:
         ax1.xaxis.set_major_locator(ticker.NullLocator())
-        ax2.set_xlabel("LHC runtime")
-        ax2.set_ylabel("ATLAS / CMS")
-
-        nPoints = 1000
-        xx = np.linspace(xMin, xMax, nPoints)
-        yy_atlas = np.array([y_atlas[x_atlas < x][-1] if any(x_atlas < x) else 0 for x in xx])
-        yy_cms = np.array([y_cms[x_cms < x][-1] if any(x_cms < x) else 0 for x in xx])
-
-        ratio = np.nan_to_num(yy_atlas/yy_cms, nan=1, posinf=1, neginf=1)
-
-        if not args.no_ref:
-            ax2.errorbar(x_cms, y_cms/y_lumi_cms, xerr=(xDown_cms, xUp_cms), label="Z", color=color_cms, 
-                linestyle='', zorder=0)
-
-            ax2.errorbar(x_atlas, y_atlas/y_lumi_atlas, xerr=(xDown_atlas, xUp_atlas), label="A", color=color_atlas, 
-                linestyle='', zorder=0)
-
-        # ax2.plot(xx, ratio, color="black", marker=None, linestyle='--', zorder=0)       
-        
-        ratio_cumsum = np.nan_to_num(np.cumsum(yy_atlas)/np.cumsum(yy_cms), nan=1, posinf=1, neginf=1)
-
-        ax2.plot(xx, ratio_cumsum, color="black", marker=None,
-            linestyle='-', zorder=0)
-
-        ratio = round(ratio_cumsum[-1],3)
-        ax2.text(0.4, 0.6 if ratio<1 else 0.2, "Integrated Z ratio: "+str(ratio), verticalalignment='bottom', transform=ax2.transAxes)
+        ax2.set_ylabel(label_ratio)
 
         ax2.plot(np.array([xMin, xMax]), np.array([1.0, 1.0]), color="black",linestyle="--", linewidth=1)
-        
+
+        # for each point we want the rate
+        def get_rate(point_x, x, xUp, xDown, y):
+            rate = y[(point_x < x + xUp) & (point_x > x - xDown)]
+            if len(rate) == 0:
+                return 0
+            elif len(rate)==1: 
+                return rate[0]
+            else:
+                raise RuntimeError("Multiple rates found at given point!")
+
+        yy_rate_atlas = np.array([get_rate(x, x_atlas, xUp_atlas, xDown_atlas, y_atlas) for x in xGrid])
+        yy_rate_cms = np.array([get_rate(x, x_cms, xUp_cms, xDown_cms, y_cms) for x in xGrid])
+
+        yy_atlas = np.cumsum(yy_rate_atlas) * dt
+        yy_cms = np.cumsum(yy_rate_cms) * dt
+
+        log.debug(f"From ZRate")
+        log.debug(f"Total number of Z (ATLAS): {yy_atlas[-1]}")
+        log.debug(f"Total number of Z (CMS): {yy_cms[-1]}")
+
+        # only show ratio if both, ATLAS and CMS != 0
+        indices = (yy_atlas!=0) & (yy_cms!=0)
+
+        xx_ratio = xGrid[indices]
+        yy_ratio = yy_atlas[indices] / yy_cms[indices]
+
+        ax2.plot(xx_ratio, yy_ratio, color="black", marker=None, linestyle='-', zorder=0)
+
+        ratio_end = round(yy_atlas[-1] / yy_cms[-1], 3)
+
+        ax2.text(0.4, 0.75 if ratio_end<1 else 0.25, f"Integrated Z ratio: {ratio_end}", verticalalignment='bottom', transform=ax2.transAxes)
+
+        if args.ref_lumi:
+            # cumulative sum of lumi
+            yy_atlas_lumi = np.cumsum([get_rate(x, x_atlas, xUp_atlas, xDown_atlas, y_lumi_atlas) for x in xGrid]) * dt
+            yy_cms_lumi = np.cumsum([get_rate(x, x_cms, xUp_cms, xDown_cms, y_lumi_cms) for x in xGrid]) * dt
+
+            xx_ratio_lumi = xGrid[indices]
+            yy_ratio_lumi = yy_atlas_lumi[indices] / yy_cms_lumi[indices]
+
+            ax2.plot(xx_ratio_lumi, yy_ratio_lumi, color="black", marker=None, linestyle='--', zorder=0)
+
+            ratio_end_lumi = round(yy_atlas_lumi[-1] / yy_cms_lumi[-1], 3)
+            ax2.text(0.4, 0.55 if ratio_end_lumi<1 else 0.05, f"Integrated L ratio: {ratio_end_lumi}", verticalalignment='bottom', transform=ax2.transAxes)
+
         ax2.set_ylim([0.71,1.29])
-        ax2.set_xlim([xMin, xMax])
-        ax2.set_xticks(xTicks)
+
+        set_xaxis_format(ax2)
+
+        if args.ref_lumi:
+            ax2.xaxis.set_major_locator(ticker.NullLocator())
+    
+            # cumulative lumi ratio
+            ax3.set_ylabel(label_ratio_ref)
+
+            ax3.plot(np.array([xMin, xMax]), np.array([1.0, 1.0]), color="black",linestyle="--", linewidth=1)
+
+            ax3.errorbar(x_cms, y_cms/y_lumi_cms, xerr=(xDown_cms, xUp_cms), label="Z", color=color_cms, 
+                linestyle='', zorder=0)
+
+            ax3.errorbar(x_atlas, y_atlas/y_lumi_atlas, xerr=(xDown_atlas, xUp_atlas), label="A", color=color_atlas, 
+                linestyle='', zorder=0)
+
+
+            ax3.set_ylim([0.81,1.19])
+
+            set_xaxis_format(ax3)
+
+            ax3.yaxis.set_label_coords(-0.12, 0.5)
 
         # align y labels
         ax1.yaxis.set_label_coords(-0.12, 0.5)
         ax2.yaxis.set_label_coords(-0.12, 0.5)
-    else:
-        ax1.set_xlabel("LHC runtime")
 
     for fmt in args.fmts:
         plt.savefig(args.outputDir+f"/fill_{fill}.{fmt}")
     plt.close()
 
-    # make plot of cumulative Z boson rate as function of LHC fill time
+
+    # --- make plot of cumulative Z boson rate as function of LHC fill time
+    log.info(f"Plot fill {fill} with cumulative numbers")
     def get_y(df):
         y = df["delZCount"].cumsum().values
         yErr = y * 1./np.sqrt(df["delZCount"].cumsum().values)
@@ -225,12 +326,12 @@ for fill in fills:
     y_cms, yErr_cms = get_y(dfill_cms)
     y_atlas, yErr_atlas = get_y(dfill_atlas)
 
-    y_lumi_cms = dfill_cms["delLumi"].cumsum().values* 650.
-    y_lumi_atlas = dfill_atlas["delLumi"].cumsum().values * 650.
+    y_lumi_cms = dfill_cms["delLumi"].cumsum().values* xsec
+    y_lumi_atlas = dfill_atlas["delLumi"].cumsum().values * xsec
 
     plt.clf()
     fig = plt.figure()
-    if not args.no_ratio and not args.no_ref:
+    if not args.no_ratio and args.ref_lumi:
         gs = gridspec.GridSpec(3, 1, height_ratios=[2, 1, 1])
         ax1 = plt.subplot(gs[0])
         ax2 = plt.subplot(gs[1])
@@ -244,27 +345,22 @@ for fill in fills:
         
     fig.subplots_adjust(hspace=0.0, left=0.15, right=0.95, top=0.92, bottom=0.125)
         
-    ax1.set_title(f"Fill {fill}")
     ax1.set_ylabel("Number of Z bosons")
-    
-    # ax1.errorbar(x_cms, y_cms, xerr=(xDown_cms, xUp_cms), yerr=yErr_cms, label="CMS", color=color_cms, marker=marker_cms,
-    #     linestyle='', zorder=0)
+    ax1.text(0.1, 0.99, f"Fill {fill}", verticalalignment='bottom', transform=ax1.transAxes)    
+    ax1.text(1.0, 0.99, datestring, verticalalignment='bottom', horizontalalignment='right', transform=ax1.transAxes)
 
-    # ax1.errorbar(x_atlas, y_atlas, xerr=(xDown_atlas, xUp_atlas), yerr=yErr_atlas, label="ATLAS", color=color_atlas, marker=marker_atlas,
-    #     linestyle='', zorder=0)
-
-    if not args.no_ref:
+    if args.ref_lumi:
         ax1.errorbar(x_cms, y_lumi_cms, xerr=(xDown_cms, xUp_cms), label="CMS L", color=color_cms, 
-            linestyle='', zorder=0)
+            linestyle='', zorder=1)
 
         ax1.errorbar(x_atlas, y_lumi_atlas, xerr=(xDown_atlas, xUp_atlas), label="ATLAS L", color=color_atlas, 
-            linestyle='', zorder=0)
+            linestyle='', zorder=1)
 
     ax1.plot(x_cms, y_cms,label="CMS Z", color=color_cms, marker=marker_cms, mfc='none',
-        linestyle='', zorder=0)
+        linestyle='', zorder=2)
 
     ax1.plot(x_atlas, y_atlas, label="ATLAS Z", color=color_atlas, marker=marker_atlas, mfc='none',
-        linestyle='', zorder=0)
+        linestyle='', zorder=2)
 
     leg = ax1.legend(loc="lower right", ncol=2)
 
@@ -273,22 +369,20 @@ for fill in fills:
 
     yRange = yMax - yMin 
     ax1.set_ylim([yMin - yRange*0.15, yMax + yRange*0.15])
-    ax1.set_xlim([xMin, xMax])
-    ax1.set_xticks(xTicks)
     ax1.ticklabel_format(axis='y', style='sci', scilimits=(5,5))
-    
+
+    set_xaxis_format(ax1)
+
     if not args.no_ratio:
         ax1.xaxis.set_major_locator(ticker.NullLocator())
 
         # cumulative Z ratio
-        ax2.set_ylabel("A / C")
+        ax2.set_ylabel(label_ratio)
 
-        nPoints = 1000
-        xx = np.linspace(xMin, xMax, nPoints)
-        yy_atlas = np.array([y_atlas[x_atlas < x][-1] if any(x_atlas < x) else 1 for x in xx])
-        yy_cms = np.array([y_cms[x_cms < x][-1] if any(x_cms < x) else 1 for x in xx])
+        yy_atlas = np.array([y_atlas[x_atlas < x][-1] if any(x_atlas < x) else 1 for x in xGrid])
+        yy_cms = np.array([y_cms[x_cms < x][-1] if any(x_cms < x) else 1 for x in xGrid])
 
-        ax2.plot(xx, yy_atlas/yy_cms, color="black", marker=None,
+        ax2.plot(xGrid, yy_atlas/yy_cms, color="black", marker=None,
             linestyle='-', zorder=0)
 
         ratio = round(y_atlas[-1] / y_cms[-1],3)
@@ -298,20 +392,22 @@ for fill in fills:
         ax2.text(0.4, 0.6 if ratio<1 else 0.2, "Integrated Z ratio: "+str(ratio), verticalalignment='bottom', transform=ax2.transAxes)
 
         ax2.set_ylim([0.81,1.19])
-        ax2.set_xlim([xMin, xMax])
-        ax2.set_xticks(xTicks)
+        set_xaxis_format(ax2)
 
-        if not args.no_ref:
+        log.debug(f"From delZCount")
+        log.debug(f"Total number of Z (ATLAS): {y_atlas[-1]}")
+        log.debug(f"Total number of Z (CMS): {y_cms[-1]}")
+
+        if args.ref_lumi:
             ax2.xaxis.set_major_locator(ticker.NullLocator())
     
             # cumulative lumi ratio
-            ax3.set_xlabel("LHC runtime")
-            ax3.set_ylabel("A / C")
+            ax3.set_ylabel(label_ratio)
 
-            yy_lumi_atlas = np.array([y_lumi_atlas[x_atlas < x][-1] if any(x_atlas < x) else 1 for x in xx])
-            yy_lumi_cms = np.array([y_lumi_cms[x_cms < x][-1] if any(x_cms < x) else 1 for x in xx])
+            yy_lumi_atlas = np.array([y_lumi_atlas[x_atlas < x][-1] if any(x_atlas < x) else 1 for x in xGrid])
+            yy_lumi_cms = np.array([y_lumi_cms[x_cms < x][-1] if any(x_cms < x) else 1 for x in xGrid])
 
-            ax3.plot(xx, yy_lumi_atlas/yy_lumi_cms, color="black", marker=None,
+            ax3.plot(xGrid, yy_lumi_atlas/yy_lumi_cms, color="black", marker=None,
                 linestyle='--', zorder=0)
 
             ratio = round(y_lumi_atlas[-1] / y_lumi_cms[-1],3)
@@ -321,8 +417,7 @@ for fill in fills:
             ax3.text(0.4, 0.6 if ratio<1 else 0.2, "Integrated L ratio: "+str(ratio), verticalalignment='bottom', transform=ax3.transAxes)
 
             ax3.set_ylim([0.81,1.19])
-            ax3.set_xlim([xMin, xMax])
-            ax3.set_xticks(xTicks)
+            set_xaxis_format(ax3)
 
             ax3.yaxis.set_label_coords(-0.12, 0.5)
 
@@ -330,8 +425,6 @@ for fill in fills:
         ax1.yaxis.set_label_coords(-0.12, 0.5)
         ax2.yaxis.set_label_coords(-0.12, 0.5)
 
-    else:
-        ax1.set_xlabel("LHC runtime")
 
     for fmt in args.fmts:
         plt.savefig(args.outputDir+f"/fill_cumulative_{fill}.{fmt}")
