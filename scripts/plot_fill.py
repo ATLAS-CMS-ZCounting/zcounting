@@ -37,11 +37,8 @@ label_ratio_ref = r"$\frac{N_\mathrm{Z}}{\mathcal{L}}$"
 
 xsec = 650
 
-with open(args.atlas_csv, "r") as ifile:
-    df_atlas = pd.read_csv(ifile)
-
-with open(args.cms_csv, "r") as ifile:
-    df_cms = pd.read_csv(ifile)
+df_atlas = utils.load_csv_files(args.atlas_csv)
+df_cms = utils.load_csv_files(args.cms_csv)
 
 # figure out which fills to plot
 if args.fills != []:
@@ -182,7 +179,7 @@ for fill in fills:
     y_atlas, yErr_atlas = get_y(dfill_atlas)
 
     y_lumi_cms = dfill_cms["instDelLumi"].values * xsec
-    y_lumi_atlas = dfill_atlas["instDelLumi"].values * xsec
+    y_lumi_atlas = dfill_atlas["instDelLumi"].values * xsec / 1000.
 
     # make plot of Z boson rate as function of LHC fill time
     plt.clf()

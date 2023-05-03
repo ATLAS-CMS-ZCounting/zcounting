@@ -22,6 +22,10 @@ parser.add_argument("--no-ratio", action="store_true",
                     help="Make no ratio")
 parser.add_argument("--fmts", default=["png", ], type=int, nargs="+",
                     help="List of formats to store the plots")
+parser.add_argument("--rrange", default=[0.81, 1.19], type=float, nargs=2,
+                    help="Y range of lower ratio plot")
+parser.add_argument("--yrange", default=[0.6, 1.9], type=float, nargs=2,
+                    help="Y range of upper ratio plot")
 args = parser.parse_args()
 
 log = logging.setup_logger(__file__, args.verbose)
@@ -34,11 +38,8 @@ color_lumi = "red"
 if not os.path.isdir(args.outputDir):
     os.mkdir(args.outputDir)
 
-with open(args.atlas_csv, "r") as ifile:
-    df_atlas = pd.read_csv(ifile)
-
-with open(args.cms_csv, "r") as ifile:
-    df_cms = pd.read_csv(ifile)
+df_atlas = utils.load_csv_files(args.atlas_csv)
+df_cms = utils.load_csv_files(args.cms_csv)
 
 def select_fills(df):
     df_new = df
@@ -89,10 +90,26 @@ dfill = pd.concat([dfill_atlas, dfill_cms], axis=1, join="inner")
 dfill["ratio_NZ"] = dfill["atlas_delZCount"] / dfill["cms_delZCount"]
 dfill["ratio_intNZ"] = dfill["atlas_intZRate"] / dfill["cms_intZRate"]
 
-dfill["ratio_Lumi"] = dfill["atlas_delLumi"] / dfill["cms_delLumi"]
-dfill["ratio_intLumi"] = dfill["atlas_intDelLumi"] / dfill["cms_intDelLumi"]
+dfill["ratio_Lumi"] = dfill["atlas_delLumi"] / dfill["cms_delLumi"] / 1000.
+dfill["ratio_intLumi"] = dfill["atlas_intDelLumi"] / dfill["cms_intDelLumi"] / 1000.
 
-dfill["ratio_err_NZ"] = np.ones(len(dfill))*0.04
+# total sums
+ratio_NZ = dfill["atlas_delZCount"].sum() / dfill["cms_delZCount"].sum()
+ratio_intNZ = dfill["atlas_intZRate"].sum() / dfill["cms_intZRate"].sum()
+
+ratio_Lumi = dfill["atlas_delLumi"].sum() / dfill["cms_delLumi"].sum()
+ratio_intLumi = dfill["atlas_intDelLumi"].sum() / dfill["cms_intDelLumi"].sum() / 1000.
+
+log.info(f"Ratio NZ: {ratio_NZ}")
+log.info(f"Ratio int NZ: {ratio_intNZ}")
+log.info(f"Ratio L: {ratio_Lumi}")
+log.info(f"Ratio int L: {ratio_intLumi}")
+
+# statistical uncertainty - sinple sqrt(N)
+dfill["ratio_err_NZ"] = dfill["ratio_NZ"] * ( 1/dfill["atlas_delZCount"] + 1/dfill["cms_delZCount"] )**0.5
+
+# systematic uncertainty
+dfill["ratio_err_NZ"] = (dfill["ratio_err_NZ"]**2 + (np.ones(len(dfill))*0.04)**2)**0.5
 
 fills = dfill.index
 
@@ -150,12 +167,12 @@ ax1.errorbar(fills, y_lumi, yerr=yerr_lumi, label="Lumi", color=color_lumi,
 
 leg = ax1.legend(loc="upper left", ncol=2)
 
-ax1.set_ylim([0.1, 1.9])
+ax1.set_ylim(args.yrange)
 ax1.set_xlim([xMin, xMax])
 
 if not args.no_ratio:
 
-    ax2.set_ylabel("Z / Lumi")
+    ax2.set_ylabel(r"$R_\mathrm{Z} / R_\mathrm{\mathcal{L}}$")
     ax2.set_xlabel("LHC fill number")
 
     ax2.plot(np.array([xMin, xMax]), np.array([1.0, 1.0]), color="black",linestyle="--", linewidth=1)
@@ -163,7 +180,7 @@ if not args.no_ratio:
     ax2.errorbar(fills, y_ratio, yerr=yerr_ratio, label="Z bosons", color="black", 
             linestyle='', marker='.', mfc='none' , zorder=1)
 
-    ax2.set_ylim([0.81, 1.19])
+    ax2.set_ylim(args.rrange)
     ax2.set_xlim([xMin, xMax])
 
 for fmt in args.fmts:

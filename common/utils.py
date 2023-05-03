@@ -1,5 +1,21 @@
 import matplotlib as mpl
 from datetime import datetime
+import pandas as pd
+import uncertainties as unc
+
+def load_csv_files(filenames):
+
+    dfs = []
+    for filename in filenames:
+        with open(filename, "r") as ifile:
+            dfs.append(pd.read_csv(ifile))
+    df = pd.concat(dfs)
+
+    for col in ["ZRate", "delZCount"]:
+        if col in df.keys() and df[col].dtype==object:
+            df[col] = df[col].apply(lambda x: unc.ufloat_fromstr(x).n)
+
+    return df
 
 def to_mpl_time(timestring):
     datetime_object = to_datetime(timestring)
