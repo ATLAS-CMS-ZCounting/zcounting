@@ -172,6 +172,7 @@ for fill in fills:
 
         # statistical error, for simplicity just take sqrt from delivered
         yErr = y * 1./np.sqrt(df['delZCount'].values)
+        np.nan_to_num(yErr, copy=False)
 
         return y, yErr
 
@@ -187,8 +188,8 @@ for fill in fills:
     if not args.no_ratio and args.ref_lumi:
         gs = gridspec.GridSpec(3, 1, height_ratios=[2, 1, 1])
         ax1 = plt.subplot(gs[0])
-        ax3 = plt.subplot(gs[1])
-        ax2 = plt.subplot(gs[2])
+        ax2 = plt.subplot(gs[1])
+        ax3 = plt.subplot(gs[2])
     elif not args.no_ratio:
         gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
         ax1 = plt.subplot(gs[0])
@@ -209,6 +210,8 @@ for fill in fills:
     ax1.plot(x_atlas, y_atlas, label="ATLAS", color=color_atlas, marker=marker_atlas, mfc='none',
         linestyle='', zorder=2)
 
+    ax1.text(0.03, 0.95, "{\\bf{ATLAS+CMS}} "+"\\emph{"+args.label+"} \n", verticalalignment='top', horizontalalignment="left", transform=ax1.transAxes)
+
     if args.ref_lumi:
         # plot reference lumi scaled to Z rate
         ax1.errorbar(x_cms, y_lumi_cms, xerr=(xDown_cms, xUp_cms), label="CMS L", color=color_cms, 
@@ -223,7 +226,7 @@ for fill in fills:
     yMax = max(max(y_cms+yErr_cms),max(y_atlas+yErr_atlas))
 
     yRange = yMax - yMin 
-    ax1.set_ylim([yMin - yRange*0.15, yMax + yRange*0.15])
+    ax1.set_ylim([yMin - yRange*0.05, yMax + yRange*0.25])
 
     set_xaxis_format(ax1)
 
@@ -265,7 +268,12 @@ for fill in fills:
 
         ax2.text(0.4, 0.75 if ratio_end<1 else 0.25, f"Integrated Z ratio: {ratio_end}", verticalalignment='bottom', transform=ax2.transAxes)
 
+        ax2.set_ylim([0.71,1.29])
+        set_xaxis_format(ax2)
+
         if args.ref_lumi:
+            ax2.xaxis.set_major_locator(ticker.NullLocator())
+
             # cumulative sum of lumi
             yy_atlas_lumi = np.cumsum([get_rate(x, x_atlas, xUp_atlas, xDown_atlas, y_lumi_atlas) for x in xGrid]) * dt
             yy_cms_lumi = np.cumsum([get_rate(x, x_cms, xUp_cms, xDown_cms, y_lumi_cms) for x in xGrid]) * dt
@@ -278,13 +286,6 @@ for fill in fills:
             ratio_end_lumi = round(yy_atlas_lumi[-1] / yy_cms_lumi[-1], 3)
             ax2.text(0.4, 0.55 if ratio_end_lumi<1 else 0.05, f"Integrated L ratio: {ratio_end_lumi}", verticalalignment='bottom', transform=ax2.transAxes)
 
-        ax2.set_ylim([0.71,1.29])
-
-        set_xaxis_format(ax2)
-
-        if args.ref_lumi:
-            ax2.xaxis.set_major_locator(ticker.NullLocator())
-    
             # cumulative lumi ratio
             ax3.set_ylabel(label_ratio_ref)
 
@@ -295,7 +296,6 @@ for fill in fills:
 
             ax3.errorbar(x_atlas, y_atlas/y_lumi_atlas, xerr=(xDown_atlas, xUp_atlas), label="A", color=color_atlas, 
                 linestyle='', zorder=0)
-
 
             ax3.set_ylim([0.81,1.19])
 
@@ -316,7 +316,7 @@ for fill in fills:
     log.info(f"Plot fill {fill} with cumulative numbers")
     def get_y(df):
         y = df["delZCount"].cumsum().values
-        yErr = y * 1./np.sqrt(df["delZCount"].cumsum().values)
+        yErr = np.sqrt(df["delZCount"].cumsum().values)
 
         return y, yErr
 
@@ -359,13 +359,15 @@ for fill in fills:
     ax1.plot(x_atlas, y_atlas, label="ATLAS Z", color=color_atlas, marker=marker_atlas, mfc='none',
         linestyle='', zorder=2)
 
+    ax1.text(0.03, 0.95, "{\\bf{ATLAS+CMS}} "+"\\emph{"+args.label+"} \n", verticalalignment='top', horizontalalignment="left", transform=ax1.transAxes)
+
     leg = ax1.legend(loc="lower right", ncol=2)
 
     yMin = min(min(y_cms-yErr_cms),min(y_atlas-yErr_atlas))
     yMax = max(max(y_cms+yErr_cms),max(y_atlas+yErr_atlas))
 
     yRange = yMax - yMin 
-    ax1.set_ylim([yMin - yRange*0.15, yMax + yRange*0.15])
+    ax1.set_ylim([yMin - yRange*0.05, yMax + yRange*0.25])
     ax1.ticklabel_format(axis='y', style='sci', scilimits=(5,5))
 
     set_xaxis_format(ax1)

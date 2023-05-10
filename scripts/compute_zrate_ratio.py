@@ -152,7 +152,7 @@ if not args.no_ratio:
 else:
     ax1 = fig.add_subplot(111)
 
-fig.subplots_adjust(hspace=0.0, left=0.075, right=0.99, top=0.99, bottom=0.125)
+fig.subplots_adjust(hspace=0.0, left=0.075, right=0.97, top=0.99, bottom=0.125)
     
 ax1.set_ylabel("ATLAS / CMS")
 ax1.set_xlabel("LHC fill number")
@@ -165,7 +165,9 @@ ax1.errorbar(fills, y_z, yerr=yerr_z, label="Z bosons", color=color_zbosons,
 ax1.errorbar(fills, y_lumi, yerr=yerr_lumi, label="Lumi", color=color_lumi, 
             linestyle='', marker='o', mfc='none' , zorder=1)
 
-leg = ax1.legend(loc="upper left", ncol=2)
+ax1.text(0.01, 0.95, "{\\bf{ATLAS+CMS}} "+"\\emph{"+args.label+"} \n", verticalalignment='top', horizontalalignment="left", transform=ax1.transAxes)
+
+leg = ax1.legend(loc="upper right", ncol=2)
 
 ax1.set_ylim(args.yrange)
 ax1.set_xlim([xMin, xMax])

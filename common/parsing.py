@@ -15,5 +15,7 @@ def parser(pars=None):
                         help="Input csv file(s) with z boson rates from CMS")
     pars.add_argument("-o", "--outputDir", default="./Test", 
                         help="Output directory")
+    pars.add_argument("-l", "--label", default="Internal", choices=["Internal", "Work in progress", "Preliminary", ""],
+                        help="Label attached to the ATLAS+CMS label on the plots")
 
     return pars
