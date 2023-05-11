@@ -12,14 +12,14 @@ def set_matplotlib_style():
         "font.family": "serif",
         "font.serif": ["Palatino",],
         "font.size": textsize,
-        'text.latex.preamble': [r"""\usepackage{bm}"""]
+        'text.latex.preamble': r"\usepackage{bm}"
     })
 
     mpl.rcParams.update({
-        "legend.fontsize" : "medium",
+        "legend.fontsize" : 14,
         "legend.frameon" : False,
         "legend.handletextpad" : 0.1,
-        "legend.columnspacing" : 0.8,
+        "legend.columnspacing" : 0.5,
         "axes.labelsize" : "medium",
         "axes.titlesize" : "medium",
         "xtick.labelsize" : "medium",

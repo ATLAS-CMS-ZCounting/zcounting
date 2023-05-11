@@ -86,105 +86,101 @@ dfill_cms = rename(dfill_cms, "cms")
 
 dfill = pd.concat([dfill_atlas, dfill_cms], axis=1, join="inner") 
 
-# compute Z boson count and luminosity ratios between ATLAS and CMS
-dfill["ratio_NZ"] = dfill["atlas_delZCount"] / dfill["cms_delZCount"]
-dfill["ratio_intNZ"] = dfill["atlas_intZRate"] / dfill["cms_intZRate"]
-
-dfill["ratio_Lumi"] = dfill["atlas_delLumi"] / dfill["cms_delLumi"] / 1000.
-dfill["ratio_intLumi"] = dfill["atlas_intDelLumi"] / dfill["cms_intDelLumi"] / 1000.
-
-# total sums
-ratio_NZ = dfill["atlas_delZCount"].sum() / dfill["cms_delZCount"].sum()
-ratio_intNZ = dfill["atlas_intZRate"].sum() / dfill["cms_intZRate"].sum()
-
-ratio_Lumi = dfill["atlas_delLumi"].sum() / dfill["cms_delLumi"].sum()
-ratio_intLumi = dfill["atlas_intDelLumi"].sum() / dfill["cms_intDelLumi"].sum() / 1000.
-
-log.info(f"Ratio NZ: {ratio_NZ}")
-log.info(f"Ratio int NZ: {ratio_intNZ}")
-log.info(f"Ratio L: {ratio_Lumi}")
-log.info(f"Ratio int L: {ratio_intLumi}")
-
-# statistical uncertainty - sinple sqrt(N)
-dfill["ratio_err_NZ"] = dfill["ratio_NZ"] * ( 1/dfill["atlas_delZCount"] + 1/dfill["cms_delZCount"] )**0.5
-
-# systematic uncertainty
-dfill["ratio_err_NZ"] = (dfill["ratio_err_NZ"]**2 + (np.ones(len(dfill))*0.04)**2)**0.5
-
 fills = dfill.index
 
-# --- json file for LPC
-dout = dfill[["ratio_intNZ", "ratio_err_NZ"]]
-dout = dout.rename(columns={"ratio_intNZ":"rat", "ratio_err_NZ": "err"})
+def zyield_ratio(df, zyield_atlas, zyield_cms, lumi_atlas, lumi_cms, postfix):
+    log.info(f"Process z yield and luminosity ratios for {postfix}")
 
-dout["fillno"] = dout.index.values.astype(str)
-result = json.loads(dout.to_json(orient="index", index=True))
-with open(args.outputDir+"/rate_ratio.json", "w") as ofile:
-    json.dump(result, ofile, indent=4)
+    # print out total sums
+    ratio_NZ = df[zyield_atlas].sum() / df[zyield_cms].sum()
+    ratio_Lumi = df[lumi_atlas].sum() / df[lumi_cms].sum()
+    log.info(f"Total ratio NZ: {ratio_NZ}")
+    log.info(f"Total ratio L: {ratio_Lumi}")
 
-# --- Make plot of ratios as a function of the fills
-minFill = min(fills)
-maxFill = max(fills)
+    # ratios per fill
+    df["rat"] = df[zyield_atlas] / df[zyield_cms]
+    df["rat_lumi"] = df[lumi_atlas] / df[lumi_cms]
 
-xMin = minFill
-xMax = maxFill
-xRange = xMax - xMin
-xMin = xMin - xRange * 0.015
-xMax = xMax + xRange * 0.015
-xRange = xMax - xMin
+    # statistical uncertainty
+    df["err"] = df["rat"] * ( 1/df[zyield_atlas] + 1/df[zyield_cms] )**0.5
+    # add ad-hoc systematic uncertainty
+    systematic_uncertainty = 0.04
+    df["err"] = (df["err"]**2 + (np.ones(len(df))*systematic_uncertainty)**2)**0.5
 
-# y_lumi = dfill["ratio_Lumi"]
-# y_z = dfill["ratio_NZ"]
-y_lumi = dfill["ratio_intLumi"]
-y_z = dfill["ratio_intNZ"]
-y_ratio = y_z/y_lumi
+    # --- json file for LPC
+    dout = df[["rat", "err"]].copy()
+    dout["fillno"] = dout.index.values.astype(str)
+    result = json.loads(dout.to_json(orient="index", index=True))
+    with open(args.outputDir+f"/zyield_ratio_{postfix}.json", "w") as ofile:
+        json.dump(result, ofile, indent=4)
 
-yerr_z = dfill["ratio_err_NZ"]
-yerr_lumi = np.ones(len(fills))*0.03
-yerr_ratio = np.sqrt(yerr_z**2 + yerr_lumi**2)
+    # --- Make plot of ratios as a function of the fills
+    y_z = df["rat"]
+    y_lumi = df["rat_lumi"]
 
-plt.clf()
-fig = plt.figure(figsize=(10.0,4.0))
-if not args.no_ratio:
-    gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
-    ax1 = plt.subplot(gs[0])
-    ax2 = plt.subplot(gs[1])
-else:
-    ax1 = fig.add_subplot(111)
+    double_ratio = y_z/y_lumi
 
-fig.subplots_adjust(hspace=0.0, left=0.075, right=0.97, top=0.99, bottom=0.125)
-    
-ax1.set_ylabel("ATLAS / CMS")
-ax1.set_xlabel("LHC fill number")
+    minFill = min(fills)
+    maxFill = max(fills)
 
-ax1.plot(np.array([xMin, xMax]), np.array([1.0, 1.0]), color="black",linestyle="--", linewidth=1)
+    xMin = minFill
+    xMax = maxFill
+    xRange = xMax - xMin
+    xMin = xMin - xRange * 0.015
+    xMax = xMax + xRange * 0.015
+    xRange = xMax - xMin
 
-ax1.errorbar(fills, y_z, yerr=yerr_z, label="Z bosons", color=color_zbosons, 
-            linestyle='', marker='o', mfc='none' , zorder=1)
+    yerr_z = df["err"]
+    yerr_lumi = np.ones(len(fills))*0.03
+    yerr_ratio = np.sqrt(yerr_z**2 + yerr_lumi**2)
 
-ax1.errorbar(fills, y_lumi, yerr=yerr_lumi, label="Lumi", color=color_lumi, 
-            linestyle='', marker='o', mfc='none' , zorder=1)
+    plt.clf()
+    fig = plt.figure(figsize=(10.0,4.0))
+    if not args.no_ratio:
+        gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
+        ax1 = plt.subplot(gs[0])
+        ax2 = plt.subplot(gs[1])
+    else:
+        ax1 = fig.add_subplot(111)
 
-ax1.text(0.01, 0.95, "{\\bf{ATLAS+CMS}} "+"\\emph{"+args.label+"} \n", verticalalignment='top', horizontalalignment="left", transform=ax1.transAxes)
+    fig.subplots_adjust(hspace=0.0, left=0.075, right=0.97, top=0.99, bottom=0.125)
+        
+    ax1.set_ylabel("ATLAS / CMS")
+    ax1.set_xlabel("LHC fill number")
 
-leg = ax1.legend(loc="upper right", ncol=2)
+    ax1.plot(np.array([xMin, xMax]), np.array([1.0, 1.0]), color="black",linestyle="--", linewidth=1)
 
-ax1.set_ylim(args.yrange)
-ax1.set_xlim([xMin, xMax])
+    ax1.errorbar(fills, y_z, yerr=yerr_z, label="Z bosons", color=color_zbosons, 
+                linestyle='', marker='o', mfc='none' , zorder=1)
 
-if not args.no_ratio:
+    ax1.errorbar(fills, y_lumi, yerr=yerr_lumi, label="Lumi", color=color_lumi, 
+                linestyle='', marker='o', mfc='none' , zorder=1)
 
-    ax2.set_ylabel(r"$R_\mathrm{Z} / R_\mathrm{\mathcal{L}}$")
-    ax2.set_xlabel("LHC fill number")
+    ax1.text(0.01, 0.95, "{\\bf{ATLAS+CMS}} "+"\\emph{"+args.label+"} \n", verticalalignment='top', horizontalalignment="left", transform=ax1.transAxes)
 
-    ax2.plot(np.array([xMin, xMax]), np.array([1.0, 1.0]), color="black",linestyle="--", linewidth=1)
+    leg = ax1.legend(loc="upper right", ncol=2)
 
-    ax2.errorbar(fills, y_ratio, yerr=yerr_ratio, label="Z bosons", color="black", 
-            linestyle='', marker='.', mfc='none' , zorder=1)
+    ax1.set_ylim(args.yrange)
+    ax1.set_xlim([xMin, xMax])
 
-    ax2.set_ylim(args.rrange)
-    ax2.set_xlim([xMin, xMax])
+    if not args.no_ratio:
+        # plot double ratio
+        ax1.xaxis.set_major_locator(ticker.NullLocator())
 
-for fmt in args.fmts:
-    plt.savefig(args.outputDir+f"/ratio_fill_{minFill}_to_{maxFill}.{fmt}")
-plt.close()
+        ax2.set_ylabel(r"$R_\mathrm{Z} / R_\mathrm{\mathcal{L}}$")
+        ax2.set_xlabel("LHC fill number")
+
+        ax2.plot(np.array([xMin, xMax]), np.array([1.0, 1.0]), color="black",linestyle="--", linewidth=1)
+
+        ax2.errorbar(fills, double_ratio, yerr=yerr_ratio, label="Z bosons", color="black", 
+                linestyle='', marker='.', mfc='none' , zorder=1)
+
+        ax2.set_ylim(args.rrange)
+        ax2.set_xlim([xMin, xMax])
+
+    for fmt in args.fmts:
+        plt.savefig(args.outputDir+f"/ratio_fills_{minFill}_to_{maxFill}_{postfix}.{fmt}")
+    plt.close()
+
+zyield_ratio(dfill, "atlas_intZRate", "cms_intZRate", "atlas_intDelLumi", "cms_intDelLumi", "recorded")
+zyield_ratio(dfill, "atlas_delZCount", "cms_delZCount", "atlas_delLumi", "cms_delLumi", "delivered")

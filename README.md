@@ -3,11 +3,18 @@ This repository collects scripts that we use to process the Z boson counting dat
 
 ## Scripts
 This folder contains scripts to produce comparison plots and make computations
+
 ### scripts/plot_fill.py
 This script generates for each fill two plots as a function of the LHC filltime. 
 The first plot shows the Z boson rate extracted by ATLAS and CMS. 
 A ratio is included by default that shows the cumulative ratio of the Z boson rates.
 The reference luminosity (scaled with a single constant) can be shown as comparison with '--ref-lumi'.
+
+An example to run the script:
+```
+python3 scripts/plot_fill.py -a path/to/atlas*.csv -c path/to/cms.csv --ref-lumi -o output/folder
+```
+
 ### scripts/compute_zrate_ratio.py
 This script generates a .json file that is given to LPC to make Z boson rate and luminosity comparisons between ATLAS and CMS. 
 The LPC wants the following format:
@@ -22,6 +29,11 @@ The LPC wants the following format:
 } 
 ```
 It also produces a plot with the Z boson rate and luminosity ratios between ATLAS and CMS and the double ratio. 
+
+An example to run the script:
+```
+python3 scripts/compute_zrate_ratio.py -a path/to/atlas*.csv -c path/to/cms.csv -o output/folder --label Preliminary
+```
 
 ## common
 This folder contains helper functions used in other places of the framework
@@ -38,17 +50,19 @@ The fiducial phase space, defined for bare muons, is:
 - The invariant mass of the dimuon system must be within $66 < m_{\mu\mu} < 116$ GeV.
 
 ### csv files
-ATLAS and CMS share information with several measurements of the Z boson rate (about every 20 minutes) in a .csv file with the following columns:
+ATLAS and CMS share information with the Z bosons rate measurements about every 20 minutes. 
+The measured number of Z bosons is corrected for the efficiency and corrected to bare muons in the fiducial phase space as defined above.
+The information is shared in a .csv file with the following columns:
 ```
 fill,beginTime,endTime,ZRate,instDelLumi,delLumi,delZCount
 ```
 - fill: The LHC fill number
 - beginTime: The begin time of the measurement as a string in the format "YY/MM/DD HH:MM:SS" in UTC.
 - endTime: The same as beginTime but for the end of the measurement. 
-- ZRate: The efficiency-corrected number of Z bosons, corrected to bare muons in the fiducial phase space of the measurement, divided by the active time of the measurement in seconds.   
-- instDelLumi: The integrated luminosity measured during the measurement, divided by the time of the measurement in seconds ($\mathrm{pb}^{-1}\mathrm{s}^{-1}$). 
-- delLumi: The integrated luminosity measured during the measurement ($\mathrm{pb}^{-1}$). 
-- delZCount: The efficiency-corrected number of Z bosons, corrected to bare muons in the fiducial phase space of the measurement, divided by the active time of the measurement multiplied by the total time of the measurement. 
+- instDelLumi: The instantaneous recorded luminosity during the measurement (in $\mathrm{pb}^{-1}\mathrm{s}^{-1}$). 
+- ZRate: The number of measured Z bosons divided by the time of the measurement in seconds (This can be seen as the recorded Z boson rate, which is independent on the reference luminosity). 
+- delLumi: The integrated delivered luminosity measured during the measurement (in $\mathrm{pb}^{-1}$). 
+- delZCount: The number of Z bosons divided by the recorded luminosity during the measurement multiplied by the delivered luminosity in the total time of the measurement (This can be seen as the delivered number of Z bosons during the total time of the measuremend. The reference luminosity is used to extrapolate to the total number of produced Z bosons, independent of the detector). 
 
 ## LPC
 - Run 2: https://lpc.web.cern.ch/plots.html?year=2018&runtype=protons

@@ -2,6 +2,10 @@ import matplotlib as mpl
 from datetime import datetime
 import pandas as pd
 import uncertainties as unc
+from common.logging import child_logger
+import pdb
+
+log = child_logger(__name__)
 
 def load_csv_files(filenames):
 
@@ -12,10 +16,35 @@ def load_csv_files(filenames):
     df = pd.concat(dfs)
 
     for col in ["ZRate", "delZCount"]:
-        if col in df.keys() and df[col].dtype==object:
-            df[col] = df[col].apply(lambda x: unc.ufloat_fromstr(x).n)
+        if col in df.keys():
+            if df[col].dtype==object:
+                df[col] = df[col].apply(lambda x: unc.ufloat_fromstr(x).n)
+        else:
+            log.error(f"Column '{col}' not found in input file but is expected.")
 
-    return df
+    if "delLumi" in df.keys():        
+        # convert into /pb (should be O(10) )
+        if max(df["delLumi"]) > 1000:
+            log.warning(f"Automatic conversion of 'delLumi' into /pb")
+            df["delLumi"] /= 1000
+    else:
+        log.error(f"Column 'delLumi' not found in input file but is expected.")
+
+    if "instDelLumi" in df.keys():        
+        # convert into /pb (should be O(0.01) )
+        if max(df["instDelLumi"]) > 1.0:
+            log.warning(f"Automatic conversion of 'instDelLumi' into /pb")
+            df["instDelLumi"] /= 1000
+    else:
+        log.error(f"Column 'instDelLumi' not found in input file but is expected.")
+
+    zeros = (df["ZRate"] <= 0) & (df["delZCount"] <= 0) & (df["delLumi"] <= 0) & (df["instDelLumi"] <= 0)
+    nZeros = sum(zeros)
+
+    if nZeros > 0:
+        log.info(f"Found {nZeros} empty measurements, those will be removed.")
+    
+    return df[~zeros]
 
 def to_mpl_time(timestring):
     datetime_object = to_datetime(timestring)

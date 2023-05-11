@@ -37,7 +37,9 @@ label_ratio_ref = r"$\frac{N_\mathrm{Z}}{\mathcal{L}}$"
 
 xsec = 650
 
+log.info("Load ATLAS csv file")
 df_atlas = utils.load_csv_files(args.atlas_csv)
+log.info("Load CMS csv file")
 df_cms = utils.load_csv_files(args.cms_csv)
 
 # figure out which fills to plot
@@ -180,12 +182,13 @@ for fill in fills:
     y_atlas, yErr_atlas = get_y(dfill_atlas)
 
     y_lumi_cms = dfill_cms["instDelLumi"].values * xsec
-    y_lumi_atlas = dfill_atlas["instDelLumi"].values * xsec / 1000.
+    y_lumi_atlas = dfill_atlas["instDelLumi"].values * xsec
 
     # make plot of Z boson rate as function of LHC fill time
     plt.clf()
     fig = plt.figure()
     if not args.no_ratio and args.ref_lumi:
+        fig = plt.figure(figsize=(6.0,6.0))
         gs = gridspec.GridSpec(3, 1, height_ratios=[2, 1, 1])
         ax1 = plt.subplot(gs[0])
         ax2 = plt.subplot(gs[1])
@@ -226,7 +229,7 @@ for fill in fills:
     yMax = max(max(y_cms+yErr_cms),max(y_atlas+yErr_atlas))
 
     yRange = yMax - yMin 
-    ax1.set_ylim([yMin - yRange*0.05, yMax + yRange*0.25])
+    ax1.set_ylim([yMin - yRange*0.01, yMax + yRange*0.3])
 
     set_xaxis_format(ax1)
 
@@ -329,6 +332,7 @@ for fill in fills:
     plt.clf()
     fig = plt.figure()
     if not args.no_ratio and args.ref_lumi:
+        fig = plt.figure(figsize=(6.0,6.0))
         gs = gridspec.GridSpec(3, 1, height_ratios=[2, 1, 1])
         ax1 = plt.subplot(gs[0])
         ax2 = plt.subplot(gs[1])
@@ -367,7 +371,7 @@ for fill in fills:
     yMax = max(max(y_cms+yErr_cms),max(y_atlas+yErr_atlas))
 
     yRange = yMax - yMin 
-    ax1.set_ylim([yMin - yRange*0.05, yMax + yRange*0.25])
+    ax1.set_ylim([yMin - yRange*0.01, yMax + yRange*0.3])
     ax1.ticklabel_format(axis='y', style='sci', scilimits=(5,5))
 
     set_xaxis_format(ax1)
