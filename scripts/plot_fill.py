@@ -18,7 +18,7 @@ parser.add_argument("-f", "--fills", default=[], type=int, nargs="*",
                     help="Fills to be plotted")
 parser.add_argument("--no-ratio", action="store_true",
                     help="Make no ratio")
-parser.add_argument("--fmts", default="png", type=str, nargs="+", choices=["png", "pdf", "eps"],
+parser.add_argument("--fmts", default=["png"], type=str, nargs="+", choices=["png", "pdf", "eps"],
                     help="List of formats to store the plots")
 parser.add_argument("--ref-lumi", default=False, action="store_true",
                     help="Show reference lumi")
@@ -270,9 +270,11 @@ for fill in fills:
 
         ax2.plot(xx_ratio, yy_ratio, color="black", marker=None, linestyle='-', zorder=0)
 
+        intZ_a = round(yy_atlas[-1])
+        intZ_c = round(yy_cms[-1])
         ratio_end = round(yy_atlas[-1] / yy_cms[-1], 3)
 
-        ax2.text(0.4, 0.75 if ratio_end<1 else 0.25, f"Integrated Z ratio: {ratio_end}", verticalalignment='bottom', transform=ax2.transAxes)
+        ax2.text(0.4, 0.75 if ratio_end<1 else 0.25, "$R_\mathrm{Z}$ = "+f"{intZ_a}/{intZ_c} = {ratio_end}", verticalalignment='bottom', transform=ax2.transAxes)
 
         ax2.set_ylim([0.71,1.29])
         set_xaxis_format(ax2)
@@ -289,8 +291,10 @@ for fill in fills:
 
             ax2.plot(xx_ratio_lumi, yy_ratio_lumi, color="black", marker=None, linestyle='--', zorder=0)
 
+            intL_a = round(yy_atlas_lumi[-1])
+            intL_c = round(yy_cms_lumi[-1])
             ratio_end_lumi = round(yy_atlas_lumi[-1] / yy_cms_lumi[-1], 3)
-            ax2.text(0.4, 0.55 if ratio_end_lumi<1 else 0.05, f"Integrated L ratio: {ratio_end_lumi}", verticalalignment='bottom', transform=ax2.transAxes)
+            ax2.text(0.4, 0.55 if ratio_end_lumi<1 else 0.05, "$R_\mathrm{\mathcal{L}}$ = "+f"{intL_a}/{intL_c} = {ratio_end_lumi}", verticalalignment='bottom', transform=ax2.transAxes)
 
             # cumulative lumi ratio
             ax3.set_ylabel(label_ratio_ref)
@@ -391,11 +395,13 @@ for fill in fills:
         ax2.plot(xGrid, yy_atlas/yy_cms, color="black", marker=None,
             linestyle='-', zorder=0)
 
+        intL_a = round(y_atlas[-1])
+        intL_c = round(y_cms[-1])
         ratio = round(y_atlas[-1] / y_cms[-1],3)
 
         ax2.plot(np.array([xMin, xMax]), np.array([1.0, 1.0]), color="black", linestyle="--", linewidth=1)
         
-        ax2.text(0.4, 0.6 if ratio<1 else 0.2, "Integrated Z ratio: "+str(ratio), verticalalignment='bottom', transform=ax2.transAxes)
+        ax2.text(0.4, 0.6 if ratio<1 else 0.2, "$R_\mathrm{Z}$ = "+f"{intL_a}/{intL_c} = {ratio}", verticalalignment='bottom', transform=ax2.transAxes)
 
         ax2.set_ylim([0.81,1.19])
         set_xaxis_format(ax2)
@@ -416,11 +422,13 @@ for fill in fills:
             ax3.plot(xGrid, yy_lumi_atlas/yy_lumi_cms, color="black", marker=None,
                 linestyle='--', zorder=0)
 
+            intL_a = round(y_lumi_atlas[-1])
+            intL_c = round(y_lumi_cms[-1])
             ratio = round(y_lumi_atlas[-1] / y_lumi_cms[-1],3)
 
             ax3.plot(np.array([xMin, xMax]), np.array([1.0, 1.0]), color="black", linestyle="--", linewidth=1)
             
-            ax3.text(0.4, 0.6 if ratio<1 else 0.2, "Integrated L ratio: "+str(ratio), verticalalignment='bottom', transform=ax3.transAxes)
+            ax3.text(0.4, 0.6 if ratio<1 else 0.2, "$R_\mathrm{\mathcal{L}}$ = "+f"{intL_a}/{intL_c} = {ratio}", verticalalignment='bottom', transform=ax3.transAxes)
 
             ax3.set_ylim([0.81,1.19])
             set_xaxis_format(ax3)
