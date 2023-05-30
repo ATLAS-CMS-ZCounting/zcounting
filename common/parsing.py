@@ -17,5 +17,6 @@ def parser(pars=None):
                         help="Output directory")
     pars.add_argument("-l", "--label", default="Internal", choices=["Internal", "Work in progress", "Preliminary", ""],
                         help="Label attached to the ATLAS+CMS label on the plots")
-
+    pars.add_argument("--overlap", default=False, action="store_true",
+                        help="Remove measurements that do not overlap between ATLAS and CMS")
     return pars

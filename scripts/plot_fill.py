@@ -18,10 +18,10 @@ parser.add_argument("-f", "--fills", default=[], type=int, nargs="*",
                     help="Fills to be plotted")
 parser.add_argument("--no-ratio", action="store_true",
                     help="Make no ratio")
-parser.add_argument("--fmts", default=["png", ], type=int, nargs="+",
+parser.add_argument("--fmts", default="png", type=str, nargs="+", choices=["png", "pdf", "eps"],
                     help="List of formats to store the plots")
 parser.add_argument("--ref-lumi", default=False, action="store_true",
-                    help="Show reference lumi")                    
+                    help="Show reference lumi")
 args = parser.parse_args()
 log = logging.setup_logger(__file__, args.verbose)
 
@@ -38,9 +38,9 @@ label_ratio_ref = r"$\frac{N_\mathrm{Z}}{\mathcal{L}}$"
 xsec = 650
 
 log.info("Load ATLAS csv file")
-df_atlas = utils.load_csv_files(args.atlas_csv)
+df_atlas = utils.load_csv_files(args.atlas_csv, args.fills)
 log.info("Load CMS csv file")
-df_cms = utils.load_csv_files(args.cms_csv)
+df_cms = utils.load_csv_files(args.cms_csv, args.fills)
 
 # figure out which fills to plot
 if args.fills != []:
@@ -53,25 +53,28 @@ if not os.path.isdir(args.outputDir):
 
 def convert_time(df):
     # convert time
-    df['timeDown'] = df['beginTime'].apply(lambda x: utils.to_datetime(x))
-    df['timeUp'] = df['endTime'].apply(lambda x: utils.to_datetime(x))
+    df['beginTime'] = df['beginTime'].apply(lambda x: utils.to_datetime(x))
+    df['endTime'] = df['endTime'].apply(lambda x: utils.to_datetime(x))
 
     # center of each time slice
-    df['timewindow'] = df['timeUp'] - df['timeDown']
-    df['time'] = df['timeDown'] + df['timewindow']/2
+    df['timewindow'] = df['endTime'] - df['beginTime']
+    df['time'] = df['beginTime'] + df['timewindow']/2
 
     df['timewindow'] = df['timewindow'].apply(lambda x: x.total_seconds())
 
     df["time"] = df["time"].apply(lambda x: utils.to_mpl_time(x))
-    df["timeUp"] = df["timeUp"].apply(lambda x: utils.to_mpl_time(x))
-    df["timeDown"] = df["timeDown"].apply(lambda x: utils.to_mpl_time(x))
+    df["timeUp"] = df["endTime"].apply(lambda x: utils.to_mpl_time(x))
+    df["timeDown"] = df["beginTime"].apply(lambda x: utils.to_mpl_time(x))
 
     df["timeUp"] = df["timeUp"] - df["time"]
     df["timeDown"] = df["time"] - df["timeDown"]
 
-
 convert_time(df_atlas) 
 convert_time(df_cms) 
+
+if args.overlap:
+    # only keep measurements that overlap at least partially
+    df_cms, df_atlas = utils.overlap(df_cms, df_atlas), utils.overlap(df_atlas, df_cms) 
 
 for fill in fills:
     if fill not in df_cms["fill"].values:

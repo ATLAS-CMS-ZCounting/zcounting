@@ -7,13 +7,13 @@ import pdb
 
 log = child_logger(__name__)
 
-def load_csv_files(filenames):
+def load_csv_files(filenames, fills=None):
 
     dfs = []
     for filename in filenames:
         with open(filename, "r") as ifile:
             dfs.append(pd.read_csv(ifile))
-    df = pd.concat(dfs)
+    df = pd.concat(dfs, ignore_index=True)
 
     for col in ["ZRate", "delZCount"]:
         if col in df.keys():
@@ -37,6 +37,10 @@ def load_csv_files(filenames):
             df["instDelLumi"] /= 1000
     else:
         log.error(f"Column 'instDelLumi' not found in input file but is expected.")
+
+    if fills is not None and fills != []:
+        log.debug(f"Select fills {fills}")
+        df = df.loc[df["fill"].apply(lambda x, fs=fills: x in fs)]
 
     zeros = (df["ZRate"] <= 0) & (df["delZCount"] <= 0) & (df["delLumi"] <= 0) & (df["instDelLumi"] <= 0)
     nZeros = sum(zeros)
@@ -70,3 +74,29 @@ def to_datetime(timestring):
         datetime_object = timestring
     
     return datetime_object
+
+def overlap(df1, df2):
+    # only keep measurements that overlap (at least partially)
+    log.debug("Remove overlap")
+
+    filtered_rows = []
+
+    # loop over all fills
+    for fill, g1 in df1.groupby("fill"):            
+        g2 = df2.loc[df2["fill"] == fill]
+
+        # Iterate over each row in df2
+        for _, row in g1.iterrows():
+            # Extract the "beginTime" and "endTime" of the current row in df2
+            begin_time = row['beginTime']
+            end_time = row['endTime']
+            
+            # Check if any row in df1 has its "beginTime" and "endTime" outside the current row's interval
+            if any([(begin_time <= e) and (end_time >= b) for b,e in g2[["beginTime","endTime"]].values] ):
+                # Add the current row from df2 to the list of filtered rows
+                filtered_rows.append(row)
+
+    log.debug("Done removing overlap")
+
+    # Create a new DataFrame from the filtered rows
+    return pd.DataFrame(filtered_rows)

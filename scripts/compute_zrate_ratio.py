@@ -73,6 +73,10 @@ df_cms["intZRate"] = df_cms['timewindow']*df_cms["ZRate"]
 df_atlas["intDelLumi"] = df_atlas['timewindow']*df_atlas["instDelLumi"]
 df_cms["intDelLumi"] = df_cms['timewindow']*df_cms["instDelLumi"]
 
+if args.overlap:
+    # only keep measurements that overlap at least partially
+    df_cms, df_atlas = utils.overlap(df_cms, df_atlas), utils.overlap(df_atlas, df_cms) 
+
 # calculate integrated Z rate and lumi per fill
 dfill_atlas = df_atlas.groupby("fill")[["delZCount","intZRate", "delLumi", "intDelLumi"]].sum()
 dfill_cms = df_cms.groupby("fill")[["delZCount","intZRate", "delLumi", "intDelLumi"]].sum()
@@ -90,6 +94,12 @@ fills = dfill.index
 
 def zyield_ratio(df, zyield_atlas, zyield_cms, lumi_atlas, lumi_cms, postfix):
     log.info(f"Process z yield and luminosity ratios for {postfix}")
+
+    # append at output file name
+    if args.overlap:
+        append = "_overlap"
+    else:
+        append = ""
 
     # print out total sums
     ratio_NZ = df[zyield_atlas].sum() / df[zyield_cms].sum()
@@ -111,7 +121,7 @@ def zyield_ratio(df, zyield_atlas, zyield_cms, lumi_atlas, lumi_cms, postfix):
     dout = df[["rat", "err"]].copy()
     dout["fillno"] = dout.index.values.astype(str)
     result = json.loads(dout.to_json(orient="index", index=True))
-    with open(args.outputDir+f"/zyield_ratio_{postfix}.json", "w") as ofile:
+    with open(args.outputDir+f"/zyield_ratio_{postfix}{append}.json", "w") as ofile:
         json.dump(result, ofile, indent=4)
 
     # --- Make plot of ratios as a function of the fills
@@ -158,6 +168,10 @@ def zyield_ratio(df, zyield_atlas, zyield_cms, lumi_atlas, lumi_cms, postfix):
 
     ax1.text(0.01, 0.95, "{\\bf{ATLAS+CMS}} "+"\\emph{"+args.label+"} \n", verticalalignment='top', horizontalalignment="left", transform=ax1.transAxes)
 
+    ax1.text(0.4, 0.95, "$R_\mathrm{\mathcal{L}}$ = "+str(round(ratio_Lumi,3)), verticalalignment='top', transform=ax1.transAxes)
+    ax1.text(0.4, 0.85, "$R_\mathrm{Z}$ = "+str(round(ratio_NZ,3)), verticalalignment='top', transform=ax1.transAxes)
+
+
     leg = ax1.legend(loc="upper right", ncol=2)
 
     ax1.set_ylim(args.yrange)
@@ -179,8 +193,11 @@ def zyield_ratio(df, zyield_atlas, zyield_cms, lumi_atlas, lumi_cms, postfix):
         ax2.set_xlim([xMin, xMax])
 
     for fmt in args.fmts:
-        plt.savefig(args.outputDir+f"/ratio_fills_{minFill}_to_{maxFill}_{postfix}.{fmt}")
+        plt.savefig(args.outputDir+f"/ratio_fills_{minFill}_to_{maxFill}_{postfix}{append}.{fmt}")
     plt.close()
+
+
+
 
 zyield_ratio(dfill, "atlas_intZRate", "cms_intZRate", "atlas_intDelLumi", "cms_intDelLumi", "recorded")
 zyield_ratio(dfill, "atlas_delZCount", "cms_delZCount", "atlas_delLumi", "cms_delLumi", "delivered")
