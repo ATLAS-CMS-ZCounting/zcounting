@@ -3,11 +3,12 @@ from datetime import datetime
 import pandas as pd
 import uncertainties as unc
 from common.logging import child_logger
+import numpy as np
 import pdb
 
 log = child_logger(__name__)
 
-def load_csv_files(filenames, fills=None):
+def load_csv_files(filenames, fills=None, threshold_outlier=0, xsec=700):
 
     dfs = []
     for filename in filenames:
@@ -15,7 +16,9 @@ def load_csv_files(filenames, fills=None):
             dfs.append(pd.read_csv(ifile))
     df = pd.concat(dfs, ignore_index=True)
 
-    for col in ["ZRate", "delZCount"]:
+    df = df.rename(columns={"ZRate": "recZRate", "instDelLumi": "instRecLumi"})
+
+    for col in ["recZRate", "delZCount"]:
         if col in df.keys():
             if df[col].dtype==object:
                 df[col] = df[col].apply(lambda x: unc.ufloat_fromstr(x).n)
@@ -30,25 +33,44 @@ def load_csv_files(filenames, fills=None):
     else:
         log.error(f"Column 'delLumi' not found in input file but is expected.")
 
-    if "instDelLumi" in df.keys():        
+    if "instRecLumi" in df.keys():        
         # convert into /pb (should be O(0.01) )
-        if max(df["instDelLumi"]) > 1.0:
-            log.warning(f"Automatic conversion of 'instDelLumi' into /pb")
-            df["instDelLumi"] /= 1000
+        if max(df["instRecLumi"]) > 1.0:
+            log.warning(f"Automatic conversion of 'instRecLumi' into /pb")
+            df["instRecLumi"] /= 1000
     else:
-        log.error(f"Column 'instDelLumi' not found in input file but is expected.")
+        log.error(f"Column 'instRecLumi' not found in input file but is expected.")
 
     if fills is not None and fills != []:
         log.debug(f"Select fills {fills}")
         df = df.loc[df["fill"].apply(lambda x, fs=fills: x in fs)]
 
-    zeros = (df["ZRate"] <= 0) & (df["delZCount"] <= 0) & (df["delLumi"] <= 0) & (df["instDelLumi"] <= 0)
-    nZeros = sum(zeros)
+    mask = (df["recZRate"] <= 0) & (df["delZCount"] <= 0) & (df["delLumi"] <= 0) & (df["instRecLumi"] <= 0)
+    nZeros = sum(mask)
 
     if nZeros > 0:
         log.info(f"Found {nZeros} empty measurements, those will be removed.")
-    
-    return df[~zeros]
+
+    nans = np.isnan(df["recZRate"]) | np.isnan(df["delZCount"]) | np.isnan(df["delLumi"]) | np.isnan(df["instRecLumi"])
+    nNans = sum(nans)
+
+    if nNans > 0:
+        log.info(f"Found {nNans} measurements with NaN, those will be removed.")
+
+    mask = mask | nans
+
+    if threshold_outlier > 0:
+        pulls = df["recZRate"].values / (df["instRecLumi"].values * xsec) - 1
+
+        outliers = abs(pulls) > threshold_outlier
+        nOutliers = sum(outliers)        
+
+        if nOutliers > 0:
+            log.info(f"Found {nOutliers} outlier measurements, those will be removed.")
+        
+        mask = mask | outliers
+
+    return df[~mask]
 
 def to_mpl_time(timestring):
     datetime_object = to_datetime(timestring)
@@ -67,7 +89,6 @@ def to_datetime(timestring):
             formatstr = '%m/%d/%y %H:%M:%S'
         else:
             formatstr = '%y/%m/%d %H:%M:%S'
-
 
         datetime_object = datetime.strptime(timestring, formatstr)
     else:
