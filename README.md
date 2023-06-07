@@ -2,7 +2,7 @@
 This repository collects scripts that we use to process the Z boson counting data in a collabortative manner between the ATLAS and CMS experiments.
 
 ## Scripts
-This folder contains scripts to produce comparison plots and make computations
+This folder contains scripts to produce comparison plots and make computations.
 
 ### scripts/plot_fill.py
 This script generates for each fill two plots as a function of the LHC filltime. 
@@ -51,7 +51,8 @@ The fiducial phase space, defined for bare muons, is:
 
 ### csv files
 ATLAS and CMS share information with the Z bosons rate measurements about every 20 minutes. 
-The measured number of Z bosons is corrected for the efficiency and corrected to bare muons in the fiducial phase space as defined above.
+The measured number of Z bosons is corrected for the efficiency and corrected to bare muons in the fiducial phase space as defined above. 
+For each experiment, only the good quality data is analyzed. Thus, the intervalls usually don't agree in start and end time, and a perfect overlap is not given.
 The information is shared in a .csv file with the following columns:
 ```
 fill,beginTime,endTime,ZRate,instDelLumi,delLumi,delZCount
@@ -59,8 +60,8 @@ fill,beginTime,endTime,ZRate,instDelLumi,delLumi,delZCount
 - fill: The LHC fill number
 - beginTime: The begin time of the measurement as a string in the format "YY/MM/DD HH:MM:SS" in UTC.
 - endTime: The same as beginTime but for the end of the measurement. 
-- instDelLumi: The instantaneous recorded luminosity during the measurement (in $\mathrm{pb}^{-1}\mathrm{s}^{-1}$). 
-- ZRate: The number of measured Z bosons divided by the time of the measurement in seconds (This can be seen as the recorded Z boson rate, which is independent on the reference luminosity). 
+- instRecLumi: The instantaneous recorded luminosity during the measurement (in $\mathrm{pb}^{-1}\mathrm{s}^{-1}$). 
+- recZRate: The number of measured Z bosons divided by the time of the measurement in seconds (This can be seen as the recorded Z boson rate, which is independent on the reference luminosity). 
 - delLumi: The integrated delivered luminosity measured during the measurement (in $\mathrm{pb}^{-1}$). 
 - delZCount: The number of Z bosons divided by the recorded luminosity during the measurement multiplied by the delivered luminosity in the total time of the measurement (This can be seen as the delivered number of Z bosons during the total time of the measuremend. The reference luminosity is used to extrapolate to the total number of produced Z bosons, independent of the detector). 
 
