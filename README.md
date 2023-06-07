@@ -55,7 +55,7 @@ The measured number of Z bosons is corrected for the efficiency and corrected to
 For each experiment, only the good quality data is analyzed. Thus, the intervalls usually don't agree in start and end time, and a perfect overlap is not given.
 The information is shared in a .csv file with the following columns:
 ```
-fill,beginTime,endTime,ZRate,instDelLumi,delLumi,delZCount
+fill,beginTime,endTime,recZRate,instRecLumi,delLumi,delZCount
 ```
 - fill: The LHC fill number
 - beginTime: The begin time of the measurement as a string in the format "YY/MM/DD HH:MM:SS" in UTC.
