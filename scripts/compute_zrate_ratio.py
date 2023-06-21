@@ -38,7 +38,7 @@ color_lumi = "red"
 if not os.path.isdir(args.outputDir):
     os.mkdir(args.outputDir)
 
-xsec = 650
+xsec = 660
 
 df_atlas = utils.load_csv_files(args.atlas_csv, xsec=xsec, threshold_outlier=args.threshold_outlier)
 df_cms = utils.load_csv_files(args.cms_csv, xsec=xsec, threshold_outlier=args.threshold_outlier)
@@ -69,19 +69,19 @@ convert_time(df_atlas)
 convert_time(df_cms)
 
 # compute integrated rate and lumi
-df_atlas["intrecZRate"] = df_atlas['timewindow']*df_atlas["recZRate"]
-df_cms["intrecZRate"] = df_cms['timewindow']*df_cms["recZRate"]
+df_atlas["intdelZRate"] = df_atlas['timewindow']*df_atlas["delZRate"]
+df_cms["intdelZRate"] = df_cms['timewindow']*df_cms["delZRate"]
 
-df_atlas["intDelLumi"] = df_atlas['timewindow']*df_atlas["instRecLumi"]
-df_cms["intDelLumi"] = df_cms['timewindow']*df_cms["instRecLumi"]
+df_atlas["intDelLumi"] = df_atlas['timewindow']*df_atlas["instDelLumi"]
+df_cms["intDelLumi"] = df_cms['timewindow']*df_cms["instDelLumi"]
 
 if args.overlap:
     # only keep measurements that overlap at least partially
     df_cms, df_atlas = utils.overlap(df_cms, df_atlas), utils.overlap(df_atlas, df_cms) 
 
 # calculate integrated Z rate and lumi per fill
-dfill_atlas = df_atlas.groupby("fill")[["delZCount","intrecZRate", "delLumi", "intDelLumi"]].sum()
-dfill_cms = df_cms.groupby("fill")[["delZCount","intrecZRate", "delLumi", "intDelLumi"]].sum()
+dfill_atlas = df_atlas.groupby("fill")[["delZCount","intdelZRate", "delLumi", "intDelLumi"]].sum()
+dfill_cms = df_cms.groupby("fill")[["delZCount","intdelZRate", "delLumi", "intDelLumi"]].sum()
 
 def rename(df, name):
     rename = {key: f"{name}_{key}" for key in df.keys() if key != "fill"}
@@ -201,5 +201,5 @@ def zyield_ratio(df, zyield_atlas, zyield_cms, lumi_atlas, lumi_cms, postfix):
 
 
 
-zyield_ratio(dfill, "atlas_intrecZRate", "cms_intrecZRate", "atlas_intDelLumi", "cms_intDelLumi", "recorded")
-zyield_ratio(dfill, "atlas_delZCount", "cms_delZCount", "atlas_delLumi", "cms_delLumi", "delivered")
+zyield_ratio(dfill, "atlas_intdelZRate", "cms_intdelZRate", "atlas_intDelLumi", "cms_intDelLumi", "integrated")
+zyield_ratio(dfill, "atlas_delZCount", "cms_delZCount", "atlas_delLumi", "cms_delLumi", "cumulated")

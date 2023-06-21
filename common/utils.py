@@ -16,9 +16,9 @@ def load_csv_files(filenames, fills=None, threshold_outlier=0, xsec=700):
             dfs.append(pd.read_csv(ifile))
     df = pd.concat(dfs, ignore_index=True)
 
-    df = df.rename(columns={"ZRate": "recZRate", "instDelLumi": "instRecLumi"})
+    df = df.rename(columns={"ZRate": "delZRate"})
 
-    for col in ["recZRate", "delZCount"]:
+    for col in ["delZRate", "delZCount"]:
         if col in df.keys():
             if df[col].dtype==object:
                 df[col] = df[col].apply(lambda x: unc.ufloat_fromstr(x).n)
@@ -33,25 +33,25 @@ def load_csv_files(filenames, fills=None, threshold_outlier=0, xsec=700):
     else:
         log.error(f"Column 'delLumi' not found in input file but is expected.")
 
-    if "instRecLumi" in df.keys():        
+    if "instDelLumi" in df.keys():        
         # convert into /pb (should be O(0.01) )
-        if max(df["instRecLumi"]) > 1.0:
-            log.warning(f"Automatic conversion of 'instRecLumi' into /pb")
-            df["instRecLumi"] /= 1000
+        if max(df["instDelLumi"]) > 1.0:
+            log.warning(f"Automatic conversion of 'instDelLumi' into /pb")
+            df["instDelLumi"] /= 1000
     else:
-        log.error(f"Column 'instRecLumi' not found in input file but is expected.")
+        log.error(f"Column 'instDelLumi' not found in input file but is expected.")
 
     if fills is not None and fills != []:
         log.debug(f"Select fills {fills}")
         df = df.loc[df["fill"].apply(lambda x, fs=fills: x in fs)]
 
-    mask = (df["recZRate"] <= 0) & (df["delZCount"] <= 0) & (df["delLumi"] <= 0) & (df["instRecLumi"] <= 0)
+    mask = (df["delZRate"] <= 0) & (df["delZCount"] <= 0) & (df["delLumi"] <= 0) & (df["instDelLumi"] <= 0)
     nZeros = sum(mask)
 
     if nZeros > 0:
         log.info(f"Found {nZeros} empty measurements, those will be removed.")
 
-    nans = np.isnan(df["recZRate"]) | np.isnan(df["delZCount"]) | np.isnan(df["delLumi"]) | np.isnan(df["instRecLumi"])
+    nans = np.isnan(df["delZRate"]) | np.isnan(df["delZCount"]) | np.isnan(df["delLumi"]) | np.isnan(df["instDelLumi"])
     nNans = sum(nans)
 
     if nNans > 0:
@@ -60,7 +60,7 @@ def load_csv_files(filenames, fills=None, threshold_outlier=0, xsec=700):
     mask = mask | nans
 
     if threshold_outlier > 0:
-        pulls = df["recZRate"].values / (df["instRecLumi"].values * xsec) - 1
+        pulls = df["delZRate"].values / (df["instDelLumi"].values * xsec) - 1
 
         outliers = abs(pulls) > threshold_outlier
         nOutliers = sum(outliers)        

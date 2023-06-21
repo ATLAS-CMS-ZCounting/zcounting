@@ -35,7 +35,7 @@ marker_atlas = "o"
 label_ratio = r"$\frac{\mathrm{ATLAS}}{\mathrm{CMS}}$"
 label_ratio_ref = r"$\frac{N_\mathrm{Z}}{\mathcal{L}}$"
 
-xsec = 650
+xsec = 660
 
 log.info("Load ATLAS csv file")
 df_atlas = utils.load_csv_files(args.atlas_csv, args.fills, xsec=xsec, threshold_outlier=args.threshold_outlier)
@@ -89,7 +89,7 @@ for fill in fills:
 
     # compute ratio of full fill
     def sum_rate(df):
-        return sum(df['timewindow']*df["recZRate"])
+        return sum(df['timewindow']*df["delZRate"])
 
     nz_rate_atlas = sum_rate(dfill_atlas)
     nz_rate_cms = sum_rate(dfill_cms)
@@ -171,9 +171,9 @@ for fill in fills:
             axis.set_xticks(xTicks)
 
 
-    # ---  make plot with recZRate from ATLAS and CMS
+    # ---  make plot with delZRate from ATLAS and CMS
     def get_y(df):
-        y = df['recZRate'].values
+        y = df['delZRate'].values
 
         # statistical error, for simplicity just take sqrt from delivered
         yErr = y * 1./np.sqrt(df['delZCount'].values)
@@ -184,8 +184,8 @@ for fill in fills:
     y_cms, yErr_cms = get_y(dfill_cms)
     y_atlas, yErr_atlas = get_y(dfill_atlas)
 
-    y_lumi_cms = dfill_cms["instRecLumi"].values * xsec
-    y_lumi_atlas = dfill_atlas["instRecLumi"].values * xsec
+    y_lumi_cms = dfill_cms["instDelLumi"].values * xsec
+    y_lumi_atlas = dfill_atlas["instDelLumi"].values * xsec
 
     # make plot of Z boson rate as function of LHC fill time
     plt.clf()
@@ -258,7 +258,7 @@ for fill in fills:
         yy_atlas = np.cumsum(yy_rate_atlas) * dt
         yy_cms = np.cumsum(yy_rate_cms) * dt
 
-        log.debug(f"From recZRate")
+        log.debug(f"From delZRate")
         log.debug(f"Total number of Z (ATLAS): {yy_atlas[-1]}")
         log.debug(f"Total number of Z (CMS): {yy_cms[-1]}")
 
