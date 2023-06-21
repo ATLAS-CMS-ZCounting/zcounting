@@ -40,8 +40,8 @@ if not os.path.isdir(args.outputDir):
 
 xsec = 660
 
-df_atlas = utils.load_csv_files(args.atlas_csv, xsec=xsec, threshold_outlier=args.threshold_outlier)
-df_cms = utils.load_csv_files(args.cms_csv, xsec=xsec, threshold_outlier=args.threshold_outlier)
+df_atlas = utils.load_csv_files(args.atlas_csv, xsec=xsec, threshold_outlier=args.threshold_outlier, scale=args.scale_atlas)
+df_cms = utils.load_csv_files(args.cms_csv, xsec=xsec, threshold_outlier=args.threshold_outlier, scale=args.scale_cms)
 
 def select_fills(df):
     df_new = df

@@ -38,9 +38,9 @@ label_ratio_ref = r"$\frac{N_\mathrm{Z}}{\mathcal{L}}$"
 xsec = 660
 
 log.info("Load ATLAS csv file")
-df_atlas = utils.load_csv_files(args.atlas_csv, args.fills, xsec=xsec, threshold_outlier=args.threshold_outlier)
+df_atlas = utils.load_csv_files(args.atlas_csv, args.fills, xsec=xsec, threshold_outlier=args.threshold_outlier, scale=args.scale_atlas)
 log.info("Load CMS csv file")
-df_cms = utils.load_csv_files(args.cms_csv, args.fills, xsec=xsec, threshold_outlier=args.threshold_outlier)
+df_cms = utils.load_csv_files(args.cms_csv, args.fills, xsec=xsec, threshold_outlier=args.threshold_outlier, scale=args.scale_cms)
 
 # figure out which fills to plot
 if args.fills != []:

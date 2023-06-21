@@ -13,6 +13,10 @@ def parser(pars=None):
                         help="Input csv file(s) with z boson rates from CMS")
     pars.add_argument("-a", "--atlas-csv", type=str, nargs="+", default=["resources/zrate_cms_2p4.csv"], 
                         help="Input csv file(s) with z boson rates from CMS")
+    pars.add_argument("--scale-cms", type=float, default=1.0, 
+                        help="Scale CMS Z boson numbers by given factor")
+    pars.add_argument("--scale-atlas", type=float, default=0.9935, 
+                        help="Scale ATLAS Z boson numbers by a given factor")
     pars.add_argument("-o", "--outputDir", default="./Test", 
                         help="Output directory")
     pars.add_argument("-l", "--label", default="Internal", choices=["Internal", "Work in progress", "Preliminary", ""],

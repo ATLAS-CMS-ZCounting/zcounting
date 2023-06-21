@@ -8,7 +8,7 @@ import pdb
 
 log = child_logger(__name__)
 
-def load_csv_files(filenames, fills=None, threshold_outlier=0, xsec=700):
+def load_csv_files(filenames, fills=None, threshold_outlier=0, xsec=700, scale=1.0):
 
     dfs = []
     for filename in filenames:
@@ -24,6 +24,8 @@ def load_csv_files(filenames, fills=None, threshold_outlier=0, xsec=700):
                 df[col] = df[col].apply(lambda x: unc.ufloat_fromstr(x).n)
         else:
             log.error(f"Column '{col}' not found in input file but is expected.")
+
+        df[col] *= scale
 
     if "delLumi" in df.keys():        
         # convert into /pb (should be O(10) )
