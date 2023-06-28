@@ -38,10 +38,8 @@ color_lumi = "red"
 if not os.path.isdir(args.outputDir):
     os.mkdir(args.outputDir)
 
-xsec = 660
-
-df_atlas = utils.load_csv_files(args.atlas_csv, xsec=xsec, threshold_outlier=args.threshold_outlier, scale=args.scale_atlas)
-df_cms = utils.load_csv_files(args.cms_csv, xsec=xsec, threshold_outlier=args.threshold_outlier, scale=args.scale_cms)
+df_atlas = utils.load_csv_files(args.atlas_csv, threshold_outlier=args.threshold_outlier, scale=args.scale_atlas)
+df_cms = utils.load_csv_files(args.cms_csv, threshold_outlier=args.threshold_outlier, scale=args.scale_cms)
 
 def select_fills(df):
     df_new = df
@@ -104,6 +102,11 @@ def zyield_ratio(df, zyield_atlas, zyield_cms, lumi_atlas, lumi_cms, postfix):
         append = ""
 
     # print out total sums
+    sum_z_atlas = round(df[zyield_atlas].sum(),1)
+    sum_z_cms = round(df[zyield_cms].sum(),1)
+    sum_l_atlas = round(df[lumi_atlas].sum()/1000,1)
+    sum_l_cms = round(df[lumi_cms].sum()/1000,1)
+
     ratio_NZ = df[zyield_atlas].sum() / df[zyield_cms].sum()
     ratio_Lumi = df[lumi_atlas].sum() / df[lumi_cms].sum()
     log.info(f"Total ratio NZ: {ratio_NZ}")
@@ -170,8 +173,8 @@ def zyield_ratio(df, zyield_atlas, zyield_cms, lumi_atlas, lumi_cms, postfix):
 
     ax1.text(0.01, 0.95, "{\\bf{ATLAS+CMS}} "+"\\emph{"+args.label+"} \n", verticalalignment='top', horizontalalignment="left", transform=ax1.transAxes)
 
-    ax1.text(0.4, 0.95, "$R_\mathrm{\mathcal{L}}$ = "+str(round(ratio_Lumi,3)), verticalalignment='top', transform=ax1.transAxes)
-    ax1.text(0.4, 0.85, "$R_\mathrm{Z}$ = "+str(round(ratio_NZ,3)), verticalalignment='top', transform=ax1.transAxes)
+    ax1.text(0.4, 0.95, "$R_\mathrm{\mathcal{L}}$ = "+ str(f"{sum_l_atlas}/{sum_l_cms} = {round(ratio_Lumi,3)}"), verticalalignment='top', transform=ax1.transAxes)
+    ax1.text(0.4, 0.85, "$R_\mathrm{Z}$ = "+ str(f"{round(ratio_NZ,3)}"), verticalalignment='top', transform=ax1.transAxes)
 
 
     leg = ax1.legend(loc="upper right", ncol=2)

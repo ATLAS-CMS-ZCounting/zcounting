@@ -8,7 +8,7 @@ import pdb
 
 log = child_logger(__name__)
 
-def load_csv_files(filenames, fills=None, threshold_outlier=0, xsec=700, scale=1.0):
+def load_csv_files(filenames, fills=None, threshold_outlier=0, scale=1.0):
 
     dfs = []
     for filename in filenames:
@@ -61,8 +61,11 @@ def load_csv_files(filenames, fills=None, threshold_outlier=0, xsec=700, scale=1
 
     mask = mask | nans
 
+    df["xsec_theory"] = df["fill"].apply(get_xsec_by_fill)
+    df["xsec_measurement"] = df["delZRate"] / df["instDelLumi"]
+
     if threshold_outlier > 0:
-        pulls = df["delZRate"].values / (df["instDelLumi"].values * xsec) - 1
+        pulls = df["xsec_measurement"].values / df["xsec_theory"].values - 1
 
         outliers = abs(pulls) > threshold_outlier
         nOutliers = sum(outliers)        
@@ -123,3 +126,22 @@ def overlap(df1, df2):
 
     # Create a new DataFrame from the filtered rows
     return pd.DataFrame(filtered_rows)
+
+def get_energy(fill):
+    if fill > 7916:
+        return 13.6
+    else:
+        return 13
+
+def get_xsec_by_fill(fill):
+    return get_xsec_by_energy(get_energy(fill))
+
+def get_xsec_by_energy(energy=13.6):
+    # just some rough guesses
+    if energy == 13.6:
+        return 680
+    elif energy == 13:
+        return 650
+    else:
+        log.warning(f"Unknown cross section for center of mass energy of {energy}, return 1")
+        return 1

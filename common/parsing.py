@@ -23,6 +23,8 @@ def parser(pars=None):
                         help="Label attached to the ATLAS+CMS label on the plots")
     pars.add_argument("--overlap", default=False, action="store_true",
                         help="Remove measurements that do not overlap between ATLAS and CMS")
-    pars.add_argument("--threshold-outlier", default=0.3, type=float,
+    pars.add_argument("--threshold-outlier", default=99.0, type=float,
                         help="Remove measurements where the Z boson rate luminosity and reference luminosity disagree by the specified number.")
+    pars.add_argument("--cem", default=13.6, type=float,
+                        help="Center of mass energy")
     return pars

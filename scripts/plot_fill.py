@@ -35,12 +35,10 @@ marker_atlas = "o"
 label_ratio = r"$\frac{\mathrm{ATLAS}}{\mathrm{CMS}}$"
 label_ratio_ref = r"$\frac{N_\mathrm{Z}}{\mathcal{L}}$"
 
-xsec = 660
-
 log.info("Load ATLAS csv file")
-df_atlas = utils.load_csv_files(args.atlas_csv, args.fills, xsec=xsec, threshold_outlier=args.threshold_outlier, scale=args.scale_atlas)
+df_atlas = utils.load_csv_files(args.atlas_csv, args.fills, threshold_outlier=args.threshold_outlier, scale=args.scale_atlas)
 log.info("Load CMS csv file")
-df_cms = utils.load_csv_files(args.cms_csv, args.fills, xsec=xsec, threshold_outlier=args.threshold_outlier, scale=args.scale_cms)
+df_cms = utils.load_csv_files(args.cms_csv, args.fills, threshold_outlier=args.threshold_outlier, scale=args.scale_cms)
 
 # figure out which fills to plot
 if args.fills != []:
@@ -184,8 +182,8 @@ for fill in fills:
     y_cms, yErr_cms = get_y(dfill_cms)
     y_atlas, yErr_atlas = get_y(dfill_atlas)
 
-    y_lumi_cms = dfill_cms["instDelLumi"].values * xsec
-    y_lumi_atlas = dfill_atlas["instDelLumi"].values * xsec
+    y_lumi_cms = dfill_cms["instDelLumi"].values * dfill_cms["xsec_theory"]
+    y_lumi_atlas = dfill_atlas["instDelLumi"].values * dfill_atlas["xsec_theory"]
 
     # make plot of Z boson rate as function of LHC fill time
     plt.clf()
@@ -333,8 +331,8 @@ for fill in fills:
     y_cms, yErr_cms = get_y(dfill_cms)
     y_atlas, yErr_atlas = get_y(dfill_atlas)
 
-    y_lumi_cms = dfill_cms["delLumi"].cumsum().values* xsec
-    y_lumi_atlas = dfill_atlas["delLumi"].cumsum().values * xsec
+    y_lumi_cms = dfill_cms["delLumi"].cumsum().values * dfill_cms["xsec_theory"]
+    y_lumi_atlas = dfill_atlas["delLumi"].cumsum().values * dfill_atlas["xsec_theory"]
 
     plt.clf()
     fig = plt.figure()
