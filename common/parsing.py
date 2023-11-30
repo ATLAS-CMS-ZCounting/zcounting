@@ -9,6 +9,8 @@ def parser(pars=None):
 
     pars.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4],
                         help="Set verbosity level with logging, the larger the more verbose")
+    pars.add_argument("--noColorLogger", action="store_true",
+                        help="Disable coloring in logger")
     pars.add_argument("-c", "--cms-csv", type=str, nargs="+", default=["resources/zrate_cms_2p4.csv"], 
                         help="Input csv file(s) with z boson rates from CMS")
     pars.add_argument("-a", "--atlas-csv", type=str, nargs="+", default=["resources/zrate_cms_2p4.csv"], 
@@ -27,4 +29,7 @@ def parser(pars=None):
                         help="Remove measurements where the Z boson rate luminosity and reference luminosity disagree by the specified number.")
     pars.add_argument("--cem", default=13.6, type=float,
                         help="Center of mass energy")
+    pars.add_argument("--fmts", default=["png"], type=str, nargs="+", choices=["png", "pdf", "eps"],
+                        help="List of formats to store the plots")
+
     return pars

@@ -47,25 +47,39 @@ def load_csv_files(filenames, fills=None, threshold_outlier=0, scale=1.0):
         log.debug(f"Select fills {fills}")
         df = df.loc[df["fill"].apply(lambda x, fs=fills: x in fs)]
 
-    mask = (df["delZRate"] <= 0) & (df["delZCount"] <= 0) & (df["delLumi"] <= 0) & (df["instDelLumi"] <= 0)
-    nZeros = sum(mask)
-
-    if nZeros > 0:
-        log.info(f"Found {nZeros} empty measurements, those will be removed.")
-
+    # remote bad measurements
     nans = np.isnan(df["delZRate"]) | np.isnan(df["delZCount"]) | np.isnan(df["delLumi"]) | np.isnan(df["instDelLumi"])
     nNans = sum(nans)
 
     if nNans > 0:
         log.info(f"Found {nNans} measurements with NaN, those will be removed.")
+    
+    df = df[~nans]
 
-    mask = mask | nans
+
+    emties = (df["delLumi"] <= 0) | (df["instDelLumi"] <= 0)
+    nEmpty = sum(emties)
+
+    if nEmpty > 0:
+        log.info(f"Found {nEmpty} measurements where the luminosity is 0, those will be removed.")
+
+    df = df[~emties]
+
+
+    zeros = (df["delZRate"] <= 0) | (df["delZCount"] <= 0)
+    nZeros = sum(zeros)
+
+    if nZeros > 0:
+        log.info(f"Found {nZeros} where the number of Z bosons is 0, those will be removed.")
+
+    df = df[~zeros]
+
 
     df["xsec_theory"] = df["fill"].apply(get_xsec_by_fill)
     df["xsec_measurement"] = df["delZRate"] / df["instDelLumi"]
 
     if threshold_outlier > 0:
-        pulls = df["xsec_measurement"].values / df["xsec_theory"].values - 1
+        pulls = df["xsec_measurement"].values / df["xsec_measurement"].median() - 1
 
         outliers = abs(pulls) > threshold_outlier
         nOutliers = sum(outliers)        
@@ -73,9 +87,9 @@ def load_csv_files(filenames, fills=None, threshold_outlier=0, scale=1.0):
         if nOutliers > 0:
             log.info(f"Found {nOutliers} outlier measurements, those will be removed.")
         
-        mask = mask | outliers
+        df = df[~outliers]
 
-    return df[~mask]
+    return df
 
 def to_mpl_time(timestring):
     datetime_object = to_datetime(timestring)

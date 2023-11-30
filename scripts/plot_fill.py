@@ -18,12 +18,10 @@ parser.add_argument("-f", "--fills", default=[], type=int, nargs="*",
                     help="Fills to be plotted")
 parser.add_argument("--no-ratio", action="store_true",
                     help="Make no ratio")
-parser.add_argument("--fmts", default=["png"], type=str, nargs="+", choices=["png", "pdf", "eps"],
-                    help="List of formats to store the plots")
 parser.add_argument("--ref-lumi", default=False, action="store_true",
                     help="Show reference lumi")
 args = parser.parse_args()
-log = logging.setup_logger(__file__, args.verbose)
+log = logging.setup_logger(__file__, args.verbose, not args.noColorLogger)
 
 colors, textsize, labelsize, markersize = plotting.set_matplotlib_style()
 
@@ -124,6 +122,8 @@ for fill in fills:
     x_cms, xUp_cms, xDown_cms = get_x(dfill_cms)
     x_atlas, xUp_atlas, xDown_atlas = get_x(dfill_atlas)
 
+    log.debug("Set x-axis")
+
     # x axis range
     xMin = min(min(x_cms-xDown_cms), min(x_atlas-xDown_atlas))
     xMax = max(max(x_cms+xUp_cms), max(x_atlas+xUp_atlas))
@@ -131,6 +131,8 @@ for fill in fills:
     xMin = xMin - xRange * 0.015
     xMax = xMax + xRange * 0.015
     xRange = xMax - xMin
+
+    log.debug("Get total timewindow")
 
     # total timewindow in seconds
     dateMin = mpl.dates.num2date(xMin)
@@ -170,6 +172,8 @@ for fill in fills:
 
 
     # ---  make plot with delZRate from ATLAS and CMS
+    log.debug("Make plot with delZRate for ATLAS and CMS")
+
     def get_y(df):
         y = df['delZRate'].values
 
@@ -278,9 +282,13 @@ for fill in fills:
         set_xaxis_format(ax2)
 
         if args.ref_lumi:
+            log.debug("Add reference lumi in plots")
             ax2.xaxis.set_major_locator(ticker.NullLocator())
 
             # cumulative sum of lumi
+            log.debug("Make cumulative sum of lumi")
+            import pdb
+            pdb.set_trace()
             yy_atlas_lumi = np.cumsum([get_rate(x, x_atlas, xUp_atlas, xDown_atlas, y_lumi_atlas) for x in xGrid]) * dt
             yy_cms_lumi = np.cumsum([get_rate(x, x_cms, xUp_cms, xDown_cms, y_lumi_cms) for x in xGrid]) * dt
 
@@ -295,6 +303,7 @@ for fill in fills:
             ax2.text(0.4, 0.55 if ratio_end_lumi<1 else 0.05, "$R_\mathrm{\mathcal{L}}$ = "+f"{intL_a}/{intL_c} = {ratio_end_lumi}", verticalalignment='bottom', transform=ax2.transAxes)
 
             # cumulative lumi ratio
+            log.debug("Make cumulative lumi ratio")
             ax3.set_ylabel(label_ratio_ref)
 
             ax3.plot(np.array([xMin, xMax]), np.array([1.0, 1.0]), color="black",linestyle="--", linewidth=1)
@@ -315,8 +324,11 @@ for fill in fills:
         ax1.yaxis.set_label_coords(-0.12, 0.5)
         ax2.yaxis.set_label_coords(-0.12, 0.5)
 
+    
     for fmt in args.fmts:
-        plt.savefig(args.outputDir+f"/fill_{fill}.{fmt}")
+        outname = f"{args.outputDir}/fill_{fill}.{fmt}"
+        log.info(f"Save figure: {outname}")
+        plt.savefig(outname)
     plt.close()
 
 
@@ -439,7 +451,10 @@ for fill in fills:
 
 
     for fmt in args.fmts:
-        plt.savefig(args.outputDir+f"/fill_cumulative_{fill}.{fmt}")
+        outname = f"{args.outputDir}/fill_cumulative_{fill}.{fmt}"
+        log.info(f"Save figure: {outname}")
+        plt.savefig(outname)
+
     plt.close()
     
 

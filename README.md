@@ -72,3 +72,4 @@ fill,beginTime,endTime,recZRate,instRecLumi,delLumi,delZCount
 ## ATLAS-CMS meetings
 - 2022/06/27: https://indico.cern.ch/event/1175147/
 - 2023/02/13: https://indico.cern.ch/event/1253518/
+- 2023/06/30: https://indico.cern.ch/event/1300368/

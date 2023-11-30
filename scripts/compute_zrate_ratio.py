@@ -20,15 +20,13 @@ parser.add_argument("-e", "--endFill", default=None, type=int,
                     help="Last fill to be considered")
 parser.add_argument("--no-ratio", action="store_true",
                     help="Make no ratio")
-parser.add_argument("--fmts", default=["png", ], type=int, nargs="+",
-                    help="List of formats to store the plots")
 parser.add_argument("--rrange", default=[0.81, 1.19], type=float, nargs=2,
                     help="Y range of lower ratio plot")
 parser.add_argument("--yrange", default=[0.6, 1.9], type=float, nargs=2,
                     help="Y range of upper ratio plot")
 args = parser.parse_args()
 
-log = logging.setup_logger(__file__, args.verbose)
+log = logging.setup_logger(__file__, args.verbose, not args.noColorLogger)
 
 colors, textsize, labelsize, markersize = plotting.set_matplotlib_style()
 
@@ -109,8 +107,11 @@ def zyield_ratio(df, zyield_atlas, zyield_cms, lumi_atlas, lumi_cms, postfix):
 
     ratio_NZ = df[zyield_atlas].sum() / df[zyield_cms].sum()
     ratio_Lumi = df[lumi_atlas].sum() / df[lumi_cms].sum()
+    ratio_double = ratio_NZ / ratio_Lumi
+
     log.info(f"Total ratio NZ: {ratio_NZ}")
     log.info(f"Total ratio L: {ratio_Lumi}")
+    log.info(f"Total double ratio: {ratio_double}")
 
     # ratios per fill
     df["rat"] = df[zyield_atlas] / df[zyield_cms]
@@ -119,11 +120,11 @@ def zyield_ratio(df, zyield_atlas, zyield_cms, lumi_atlas, lumi_cms, postfix):
     # statistical uncertainty
     df["err"] = df["rat"] * ( 1/df[zyield_atlas] + 1/df[zyield_cms] )**0.5
     # add ad-hoc systematic uncertainty
-    systematic_uncertainty = 0.04
+    systematic_uncertainty = (3**2+3**2)**0.5
     df["err"] = (df["err"]**2 + (np.ones(len(df))*systematic_uncertainty)**2)**0.5
 
     # --- json file for LPC
-    dout = df[["rat", "err"]].copy()
+    dout = df[["rat", "err", "rat_lumi"]].copy()
     dout["fillno"] = dout.index.values.astype(str)
     result = json.loads(dout.to_json(orient="index", index=True))
     with open(args.outputDir+f"/zyield_ratio_{postfix}{append}.json", "w") as ofile:
