@@ -33,6 +33,9 @@ eval $command
 command="python3 scripts/plot_fill.py -a $ATLAS/*.csv -c $CMS/*.csv -o $WEBDIR/Fills/ --noColorLogger --fmts png pdf"
 echo $command
 eval $command
+command="python3 scripts/plot_fill.py -a $ATLAS/*.csv -c $CMS/*.csv -o $WEBDIR/Fills_refLumi/ --noColorLogger --ref-lumi --fmts png pdf"
+echo $command
+eval $command
 
 # produce plots per Year
 echo "Produce plots per Year"

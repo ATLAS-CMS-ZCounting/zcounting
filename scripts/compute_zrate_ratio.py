@@ -120,7 +120,7 @@ def zyield_ratio(df, zyield_atlas, zyield_cms, lumi_atlas, lumi_cms, postfix):
     # statistical uncertainty
     df["err"] = df["rat"] * ( 1/df[zyield_atlas] + 1/df[zyield_cms] )**0.5
     # add ad-hoc systematic uncertainty
-    systematic_uncertainty = (3**2+3**2)**0.5
+    systematic_uncertainty = (0.03**2+0.03**2)**0.5
     df["err"] = (df["err"]**2 + (np.ones(len(df))*systematic_uncertainty)**2)**0.5
 
     # --- json file for LPC
@@ -203,7 +203,5 @@ def zyield_ratio(df, zyield_atlas, zyield_cms, lumi_atlas, lumi_cms, postfix):
     plt.close()
 
 
-
-
-zyield_ratio(dfill, "atlas_intdelZRate", "cms_intdelZRate", "atlas_intDelLumi", "cms_intDelLumi", "integrated")
+#zyield_ratio(dfill, "atlas_intdelZRate", "cms_intdelZRate", "atlas_intDelLumi", "cms_intDelLumi", "integrated")
 zyield_ratio(dfill, "atlas_delZCount", "cms_delZCount", "atlas_delLumi", "cms_delLumi", "cumulated")

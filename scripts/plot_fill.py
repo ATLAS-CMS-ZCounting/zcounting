@@ -186,8 +186,8 @@ for fill in fills:
     y_cms, yErr_cms = get_y(dfill_cms)
     y_atlas, yErr_atlas = get_y(dfill_atlas)
 
-    y_lumi_cms = dfill_cms["instDelLumi"].values * dfill_cms["xsec_theory"]
-    y_lumi_atlas = dfill_atlas["instDelLumi"].values * dfill_atlas["xsec_theory"]
+    y_lumi_cms = dfill_cms["instDelLumi"].values * dfill_cms["xsec_theory"].values
+    y_lumi_atlas = dfill_atlas["instDelLumi"].values * dfill_atlas["xsec_theory"].values
 
     # make plot of Z boson rate as function of LHC fill time
     plt.clf()
@@ -249,8 +249,11 @@ for fill in fills:
             rate = y[(point_x < x + xUp) & (point_x > x - xDown)]
             if len(rate) == 0:
                 return 0
-            elif len(rate)==1: 
-                return rate[0]
+            elif len(rate)==1:
+                if type(rate) == type(np.array([])):
+                    return rate[0]
+                else:
+                    pdb.set_trace()
             else:
                 raise RuntimeError("Multiple rates found at given point!")
 
@@ -287,10 +290,13 @@ for fill in fills:
 
             # cumulative sum of lumi
             log.debug("Make cumulative sum of lumi")
-            import pdb
-            pdb.set_trace()
-            yy_atlas_lumi = np.cumsum([get_rate(x, x_atlas, xUp_atlas, xDown_atlas, y_lumi_atlas) for x in xGrid]) * dt
-            yy_cms_lumi = np.cumsum([get_rate(x, x_cms, xUp_cms, xDown_cms, y_lumi_cms) for x in xGrid]) * dt
+            log.debug("Get ATLAS rates")
+            yy_atlas_lumi = [get_rate(x, x_atlas, xUp_atlas, xDown_atlas, y_lumi_atlas) for x in xGrid]
+            log.debug("Get CMS rates")
+            yy_cms_lumi = [get_rate(x, x_cms, xUp_cms, xDown_cms, y_lumi_cms) for x in xGrid]
+
+            yy_atlas_lumi = np.cumsum(yy_atlas_lumi)*dt
+            yy_cms_lumi = np.cumsum(yy_cms_lumi)*dt
 
             xx_ratio_lumi = xGrid[indices]
             yy_ratio_lumi = yy_atlas_lumi[indices] / yy_cms_lumi[indices]
@@ -343,8 +349,8 @@ for fill in fills:
     y_cms, yErr_cms = get_y(dfill_cms)
     y_atlas, yErr_atlas = get_y(dfill_atlas)
 
-    y_lumi_cms = dfill_cms["delLumi"].cumsum().values * dfill_cms["xsec_theory"]
-    y_lumi_atlas = dfill_atlas["delLumi"].cumsum().values * dfill_atlas["xsec_theory"]
+    y_lumi_cms = dfill_cms["delLumi"].cumsum().values * dfill_cms["xsec_theory"].values
+    y_lumi_atlas = dfill_atlas["delLumi"].cumsum().values * dfill_atlas["xsec_theory"].values
 
     plt.clf()
     fig = plt.figure()
